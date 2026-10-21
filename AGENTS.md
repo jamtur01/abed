@@ -4,7 +4,7 @@
 
 ## OVERVIEW
 
-Slack and Discord bot for movie and TV show requests with approval workflow. Users run `/movie <title>` or `/tv <title>` → select from dropdown → approval posted to channel → approver Approve/Reject → Radarr (movies) or Sonarr (TV) adds the title. A download poller notifies requesters via Slack DM when media is ready. Built on `@slack/bolt` v4 (Socket Mode), `discord.js` v14, Bun runtime, SQLite via `bun:sqlite`. Either platform (or both) can run simultaneously. Sonarr is optional.
+Slack and Discord bot for movie and TV show requests with approval workflow. Users run `/movie <title>` or `/tv <title>` → select from dropdown → approval posted to channel → approver Approve/Reject → Radarr (movies) or Sonarr (TV) adds the title. A download poller notifies requesters via Slack DM when media is ready. Built on `@slack/bolt` v5 (Socket Mode), `discord.js` v14, Bun runtime, SQLite via `bun:sqlite`. Either platform (or both) can run simultaneously. Sonarr is optional.
 
 ## STRUCTURE
 
@@ -114,7 +114,7 @@ abed/
 - **Shared core helpers**: `src/core/helpers/submitForApproval.ts` centralizes the Slack approval flow (exists check → DB insert → post message → auto-join channel). Discord handles this logic inline in its action handlers.
 - **Structured logging**: All modules use `createLogger('prefix')` from `src/logger.ts`. Supports `debug`, `info`, `warn`, `error` levels controlled by `LOG_LEVEL` env. Secrets are auto-redacted from output.
 - **DB column naming legacy**: `requester_slack_id`, `approver_slack_id`, and `slack_message_ts` columns hold Discord user/message IDs too — names kept for schema backwards compatibility. Comments in `src/db/types.ts` document this.
-- **`(body as any).actions[0]`**: Bolt v4 typing gaps — Slack action payloads are cast. Don't try to fix this, it's intentional.
+- **`(body as any).actions[0]`**: Bolt v5 typing gaps — Slack action payloads are cast. Don't try to fix this, it's intentional.
 - **`Routes.applicationGuildCommands(...) as any`**: discord.js REST API typing workaround in `src/discord/index.ts`. Intentional.
 - **Tests use `mock()` from `bun:test`**: No jest, no vitest. Mock functions via `mock()`, mock fetch by assigning `globalThis.fetch`.
 - **Tests use in-memory SQLite**: `getDb(':memory:')` in `beforeEach` after `_resetDb()`.
@@ -124,7 +124,7 @@ abed/
 
 - **DO NOT** access `process.env` outside `src/config/index.ts` (exceptions: `DB_PATH` in `src/db/index.ts`, `LOG_LEVEL` in `src/logger.ts`)
 - **DO NOT** use `@slack/types` for Block Kit — use local `src/slack/messages/types.ts` subset
-- **DO NOT** store full movie/show data in Slack action values — Slack has 150-char limit. Use `tmdbId`/`tvdbId` only, look up from cache
+- **DO NOT** store full movie/show data in Slack action values — Slack has 150-char limit. Selections use `tmdbId`/`tvdbId` from the user cache; approval buttons use immutable request IDs and validate message/channel/platform
 - **DO NOT** add global `fetch` mocks — each test assigns `globalThis.fetch` locally
 - **DO NOT** import RadarrClient or SonarrClient directly in action handlers — receive via deps injection
 - **DO NOT** rename `requester_slack_id`, `approver_slack_id`, or `slack_message_ts` DB columns — they are reused for Discord IDs for schema backwards compatibility
@@ -154,8 +154,18 @@ docker compose logs -f abed       # Tail logs
 - **Discord dynamic import**: `src/discord/index.ts` is imported via `await import(...)` in `src/index.ts` to avoid loading discord.js when Discord is not configured.
 - **Both Radarr and Sonarr connections are non-blocking** — bot starts even if either is down; API calls will fail at request time with logged warnings.
 - **not_in_channel auto-join** (Slack only): `submitForApproval` catches Slack's `not_in_channel` error and auto-joins the approval channel before retrying. Discord fetches the channel directly and has no equivalent auto-join.
-- **Race condition guard**: Both Slack and Discord approve/reject handlers silently return (deferUpdate on Discord) if `request.status !== 'pending'` — prevents double-processing when two approvers click simultaneously.
-- **Duplicate detection**: Pre-submission checks call `radarrClient.movieExists()` / `sonarrClient.seriesExists()` in both Slack and Discord flows. DB does not enforce uniqueness on `tmdb_id`/`tvdb_id` — multiple request rows can exist; `getRequestByTmdbId` returns the most recent.
+- **Approval ownership**: `src/core/approval.ts` atomically claims pending rows before API work.
+  Failed/interrupted writes stay uncertain and can only be reconciled through exact Arr identity;
+  never reset them to pending or blindly retry writes. SQLite uses synchronous FULL.
+- **Submission limits**: `src/core/submission.ts` reserves rows under an immediate transaction,
+  rejecting active title/platform duplicates and more than ten user submissions/hour across media.
+  Both platform boundaries limit searches/selections to twenty/user/fixed minute in SQLite.
+- **Message binding**: Approval handlers require immutable request IDs, platform, stored channel
+  and message identity. Old buttons are invalid. Failed/unbound message posts become failed;
+  startup preserves bound pending requests and marks interrupted writes uncertain.
+- **Channel boundaries**: Slack global middleware and Discord dispatcher restrict commands and
+  selections to request channels, approvals to approval channels; Discord also checks guild.
+  Queue/user history queries filter platform before applying limits.
 - **Download poller**: `src/poller.ts` runs on a 15-minute interval. Checks Radarr for `hasFile` on approved movies and Sonarr for `episodeFileCount > 0` on approved TV shows. Sends DM notification via Slack or Discord (based on `request.platform`) and marks `downloaded_notified = 1`.
 - **`DB_PATH` default**: `./data/requests.db` locally, overridden to `/app/data/requests.db` via docker-compose env.
 - **Migration pattern**: Schema uses `CREATE TABLE IF NOT EXISTS` for initial setup. Additive column changes use manual migration functions (`migrateDownloadedNotified`, `migratePlatform`) that check `PRAGMA table_info` before `ALTER TABLE`. Destructive schema changes require manual DB handling.

@@ -10,7 +10,7 @@ Named after **Abed Nadir** from the TV show [*Community*](https://en.wikipedia.o
 
 ---
 
-A Slack and Discord bot that lets users request movies and TV shows directly from chat. Users run `/movie <title>` or `/tv <title>`, the bot searches Radarr or Sonarr respectively and presents a dropdown of results. Once a user selects a title, an approval request is posted to a dedicated channel with Approve/Reject buttons. When an approver clicks Approve, the movie or TV show is automatically added to Radarr/Sonarr and the requester gets a DM confirmation. Sonarr integration is optional — the bot works with Radarr only, Sonarr only, or both. Built with [@slack/bolt](https://github.com/slackapi/bolt-js) v4 (Socket Mode) and [discord.js](https://discord.js.org/) v14. Runs on Bun, stores request history in SQLite, and deploys via Docker. You can run the Slack bot, the Discord bot, or both simultaneously!
+A Slack and Discord bot that lets users request movies and TV shows directly from chat. Users run `/movie <title>` or `/tv <title>`, the bot searches Radarr or Sonarr respectively and presents a dropdown of results. Once a user selects a title, an approval request is posted to a dedicated channel with Approve/Reject buttons. When an approver clicks Approve, the movie or TV show is automatically added to Radarr/Sonarr and the requester gets a DM confirmation. Sonarr integration is optional — the bot works with Radarr only, Sonarr only, or both. Built with [@slack/bolt](https://github.com/slackapi/bolt-js) v5 (Socket Mode) and [discord.js](https://discord.js.org/) v14. Runs on Bun, stores request history in SQLite, and deploys via Docker. You can run the Slack bot, the Discord bot, or both simultaneously!
 
 ---
 
@@ -394,7 +394,7 @@ bun run typecheck
 
 ### Movies
 
-1. **User types `/movie The Batman`** in any channel
+1. **User types `/movie The Batman`** in the configured request channel
 2. **Bot searches Radarr** and responds ephemerally (visible only to the user) with a dropdown of up to 25 matching results
 3. **User selects a movie** from the dropdown
 4. **Bot posts an approval request** to the `SLACK_APPROVAL_CHANNEL_ID` channel, including movie details and **Approve** / **Reject** buttons
@@ -407,7 +407,7 @@ bun run typecheck
 
 ### TV Shows
 
-1. **User types `/tv Breaking Bad`** in any channel
+1. **User types `/tv Breaking Bad`** in the configured request channel
 2. **Bot searches Sonarr** and responds ephemerally with a dropdown of matching results
 3. **User selects a TV show** from the dropdown
 4. **Bot posts an approval request** to the same approval channel, including show details (network, season count) and **Approve** / **Reject** buttons
@@ -420,7 +420,7 @@ bun run typecheck
 
 ### Viewing Your Requests
 
-1. **User types `/myrequests`** in any channel
+1. **User types `/myrequests`** in the configured request channel
 2. **Bot queries the SQLite database** for all movie and TV requests made by that user
 3. **Bot responds ephemerally** (visible only to the user) with up to 15 requests, sorted newest-first, showing title, type (movie/TV), and status
 
@@ -428,13 +428,39 @@ bun run typecheck
 
 ### Viewing the Request Queue
 
-1. **User types `/queue`** in any channel
-2. **Bot queries the SQLite database** for all movie and TV requests across all users, sorted newest-first (up to 25 results)
+1. **User types `/queue`** in the configured request channel
+2. **Bot queries the SQLite database** for all movie and TV requests for this platform across all users, sorted newest-first (up to 25 results)
 3. **Bot responds ephemerally** (visible only to the user) with each request showing title, type (movie/TV), status, and who requested it
 
 > **Optional status filter:** Users can type `/queue pending` (or `approved`, `rejected`, `already_exists`, `failed`) to filter results by status. If omitted, all statuses are shown.
 
 ---
+
+## Security behavior in this fork
+
+- Commands and selections are limited to the configured request channel. Approval
+  actions require the configured approval channel and an allowlisted approver.
+  Discord also checks the configured guild. History is isolated by platform.
+- Buttons carry immutable request IDs and must match their stored platform, channel
+  and message. Buttons created before this fork update are rejected; unfinished
+  legacy requests without a channel binding become failed and must be requested again.
+- Approval claims the row before API work. Rejection competes for that same pending
+  row. A failed lookup can be retried; a failed or interrupted Arr write becomes
+  `uncertain`. Clicking Approve again checks Arr for the exact title without repeating
+  the write. If absent, it stays uncertain for operator investigation. There is no
+  automatic retry of an ambiguous write.
+- Only one active request per title/platform is accepted. Each user may submit ten
+  titles per hour across movies and TV; failed submissions count. Searches/selections
+  share a persisted budget of twenty operations per fixed minute per platform/user.
+- Failed message posts invalidate the unbound request; interrupted posts are marked
+  failed at startup. A fresh submission gets a new ID, so a delayed old message cannot
+  approve it. No messages or media requests are automatically replayed at startup.
+- Arr URLs require HTTP(S), without embedded credentials, queries or fragments.
+  Requests reject redirects and time out after fifteen seconds. Use HTTPS whenever
+  the network path is not trusted.
+- The Linux AMD64 image uses digest-pinned Bun 1.4.3 and a frozen dependency lockfile;
+  the runtime excludes development dependencies. Build and scan the actual image
+  before deployment. The existing publication workflow is not a security gate.
 
 ## Troubleshooting
 

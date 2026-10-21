@@ -10,7 +10,7 @@ Named after **Abed Nadir** from the TV show [*Community*](https://en.wikipedia.o
 
 ---
 
-A Slack and Discord bot that lets users request movies and TV shows directly from chat. Users run `/movie <title>` or `/tv <title>`, the bot searches Radarr or Sonarr respectively and presents a dropdown of results. Once a user selects a title, an approval request is posted to a dedicated channel with Approve/Reject buttons. When an approver clicks Approve, the movie or TV show is automatically added to Radarr/Sonarr and the requester gets a DM confirmation. Sonarr integration is optional — the bot works with Radarr only, Sonarr only, or both. Built with [@slack/bolt](https://github.com/slackapi/bolt-js) v5 (Socket Mode) and [discord.js](https://discord.js.org/) v14. Runs on Bun, stores request history in SQLite, and deploys via Docker. You can run the Slack bot, the Discord bot, or both simultaneously!
+A Slack and Discord bot that lets users request movies and TV shows directly from chat. Users run `/movie <title>` or `/tv <title>`, the bot searches Radarr or Sonarr respectively and presents a dropdown of results. Once a user selects a title, an approval request is posted to a dedicated channel with Approve/Reject buttons. When an approver clicks Approve, the movie or TV show is automatically added to Radarr/Sonarr and the requester gets a DM confirmation. Sonarr integration is optional — the bot works with Radarr only, Sonarr only, or both. Built with [@slack/bolt](https://github.com/slackapi/bolt-js) v4 (Socket Mode) and [discord.js](https://discord.js.org/) v14. Runs on Bun, stores request history in SQLite, and deploys via Docker. You can run the Slack bot, the Discord bot, or both simultaneously!
 
 ---
 
@@ -458,6 +458,9 @@ bun run typecheck
 - Arr URLs require HTTP(S), without embedded credentials, queries or fragments.
   Requests reject redirects and time out after fifteen seconds. Use HTTPS whenever
   the network path is not trusted.
+- Slack is pinned to the maintained Bolt 4 / Web API 7 branches with Socket Mode 2.
+  Socket Mode 3 requires Undici WebSocket ping APIs absent from Bun 1.4.3's builtin
+  compatibility module. A loopback heartbeat test guards this runtime boundary.
 - The Linux AMD64 image uses digest-pinned Bun 1.4.3 and a frozen dependency lockfile;
   the runtime excludes development dependencies. Build and scan the actual image
   before deployment. The existing publication workflow is not a security gate.

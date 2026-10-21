@@ -4,7 +4,7 @@
 
 ## OVERVIEW
 
-Slack and Discord bot for movie and TV show requests with approval workflow. Users run `/movie <title>` or `/tv <title>` → select from dropdown → approval posted to channel → approver Approve/Reject → Radarr (movies) or Sonarr (TV) adds the title. A download poller notifies requesters via Slack DM when media is ready. Built on `@slack/bolt` v5 (Socket Mode), `discord.js` v14, Bun runtime, SQLite via `bun:sqlite`. Either platform (or both) can run simultaneously. Sonarr is optional.
+Slack and Discord bot for movie and TV show requests with approval workflow. Users run `/movie <title>` or `/tv <title>` → select from dropdown → approval posted to channel → approver Approve/Reject → Radarr (movies) or Sonarr (TV) adds the title. A download poller notifies requesters via Slack DM when media is ready. Built on `@slack/bolt` v4 (Socket Mode), `discord.js` v14, Bun runtime, SQLite via `bun:sqlite`. Either platform (or both) can run simultaneously. Sonarr is optional.
 
 ## STRUCTURE
 
@@ -114,7 +114,7 @@ abed/
 - **Shared core helpers**: `src/core/helpers/submitForApproval.ts` centralizes the Slack approval flow (exists check → DB insert → post message → auto-join channel). Discord handles this logic inline in its action handlers.
 - **Structured logging**: All modules use `createLogger('prefix')` from `src/logger.ts`. Supports `debug`, `info`, `warn`, `error` levels controlled by `LOG_LEVEL` env. Secrets are auto-redacted from output.
 - **DB column naming legacy**: `requester_slack_id`, `approver_slack_id`, and `slack_message_ts` columns hold Discord user/message IDs too — names kept for schema backwards compatibility. Comments in `src/db/types.ts` document this.
-- **`(body as any).actions[0]`**: Bolt v5 typing gaps — Slack action payloads are cast. Don't try to fix this, it's intentional.
+- **`(body as any).actions[0]`**: Bolt v4 typing gaps — Slack action payloads are cast. Don't try to fix this, it's intentional.
 - **`Routes.applicationGuildCommands(...) as any`**: discord.js REST API typing workaround in `src/discord/index.ts`. Intentional.
 - **Tests use `mock()` from `bun:test`**: No jest, no vitest. Mock functions via `mock()`, mock fetch by assigning `globalThis.fetch`.
 - **Tests use in-memory SQLite**: `getDb(':memory:')` in `beforeEach` after `_resetDb()`.

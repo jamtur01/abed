@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
-    "lib": ["ESNext"],
+    "lib": [
+      "ESNext"
+    ],
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
@@ -13,7 +15,13 @@
     "strict": true,
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": true,
+    "types": [
+      "bun"
+    ]
   },
-  "include": ["src/**/*", "tests/**/*"]
+  "include": [
+    "src/**/*",
+    "tests/**/*"
+  ]
 }

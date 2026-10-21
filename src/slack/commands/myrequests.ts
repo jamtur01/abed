@@ -5,7 +5,7 @@ import type { MyRequestItem } from '../messages/index';
 import type { RequestStatus } from '../../db/types';
 import { createLogger } from '../../logger';
 
-const VALID_STATUSES: RequestStatus[] = ['pending', 'approved', 'rejected', 'already_exists', 'failed'];
+const VALID_STATUSES: RequestStatus[] = ['pending', 'submitting', 'uncertain', 'approved', 'rejected', 'already_exists', 'failed'];
 
 const log = createLogger('myrequests-cmd');
 

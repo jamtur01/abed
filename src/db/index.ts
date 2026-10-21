@@ -17,7 +17,12 @@ let _db: Database | null = null;
 export function getDb(path?: string): Database {
   if (!_db) {
     _db = new Database(path ?? DB_PATH, { create: true });
+    _db.exec('PRAGMA synchronous = FULL');
     initSchema(_db);
+    // A stopped process cannot know whether an in-flight Arr write was accepted.
+    for (const table of ['requests', 'tv_requests']) {
+      _db.exec(`UPDATE ${table} SET status='uncertain' WHERE status='submitting'`);
+    }
   }
   return _db;
 }

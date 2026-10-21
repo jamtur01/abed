@@ -1,6 +1,7 @@
+import { transition } from '../../core/approval';
 import type { App } from '@slack/bolt';
 import { buildTvRejectedMessage, ACTION_IDS } from '../messages/index';
-import { getTvRequest, updateTvRequestStatus } from '../../db/index';
+import { getTvRequest } from '../../db/index';
 import { createLogger } from '../../logger';
 
 const log = createLogger('reject-tv');
@@ -44,12 +45,7 @@ export function registerRejectTvAction(app: App, deps: RejectTvDeps): void {
         return;
       }
 
-      if (request.status !== 'pending') {
-        log.warn('Request not pending', { requestId, status: request.status });
-        return;
-      }
-
-      updateTvRequestStatus({ id: request.id, status: 'rejected', approver_slack_id: approverId });
+      if (!transition('tv', request.id, 'pending', 'rejected', approverId)) return;
 
       log.info('TV show rejected', { approver: approverId, show: `${request.show_title} (${request.year})`, requestId });
 

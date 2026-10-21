@@ -1,7 +1,8 @@
+import { approveMovieRequest } from '../../core/approval';
 import type { App } from '@slack/bolt';
 import type { RadarrClient } from '../../radarr/client';
 import { buildApprovedMessage, ACTION_IDS } from '../messages/index';
-import { getRequest, updateRequestStatus } from '../../db/index';
+import { getRequest } from '../../db/index';
 import { createLogger } from '../../logger';
 
 const log = createLogger('approve');
@@ -48,27 +49,7 @@ export function registerApproveMovieAction(app: App, deps: ApproveMovieDeps): vo
         return;
       }
 
-      if (request.status !== 'pending') {
-        log.warn('Request not pending', { requestId, status: request.status });
-        return;
-      }
-
-      const searchResults = await deps.radarrClient.searchMovies(request.movie_title);
-      const movieData = searchResults.find(m => m.tmdbId === request.tmdb_id);
-      if (!movieData) {
-        await respond({
-          response_type: 'ephemeral',
-          replace_original: false,
-          text: ':x: Could not find movie data in Radarr. It may have been removed.',
-        });
-        return;
-      }
-
-      await deps.radarrClient.addMovie(movieData, deps.qualityProfileId, deps.rootFolderPath);
-
-      log.info('Radarr movie added', { requestId });
-
-      updateRequestStatus({ id: request.id, status: 'approved', approver_slack_id: approverId });
+      if (!await approveMovieRequest(request, approverId, deps)) return;
 
       log.info('Movie approved', { approver: approverId, movie: `${request.movie_title} (${request.year})`, requestId });
 
@@ -94,7 +75,7 @@ export function registerApproveMovieAction(app: App, deps: ApproveMovieDeps): vo
       await respond({
         response_type: 'ephemeral',
         replace_original: false,
-        text: ':x: Failed to approve the movie. Please try again.',
+        text: ':x: Failed to approve the movie. Check the request status. Uncertain submissions are reconciled without resending.',
       });
     }
   });

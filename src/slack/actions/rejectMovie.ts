@@ -1,6 +1,7 @@
+import { transition } from '../../core/approval';
 import type { App } from '@slack/bolt';
 import { buildRejectedMessage, ACTION_IDS } from '../messages/index';
-import { getRequest, updateRequestStatus } from '../../db/index';
+import { getRequest } from '../../db/index';
 import { createLogger } from '../../logger';
 
 const log = createLogger('reject');
@@ -44,12 +45,7 @@ export function registerRejectMovieAction(app: App, deps: RejectMovieDeps): void
         return;
       }
 
-      if (request.status !== 'pending') {
-        log.warn('Request not pending', { requestId, status: request.status });
-        return;
-      }
-
-      updateRequestStatus({ id: request.id, status: 'rejected', approver_slack_id: approverId });
+      if (!transition('movie', request.id, 'pending', 'rejected', approverId)) return;
 
       log.info('Movie rejected', { approver: approverId, movie: `${request.movie_title} (${request.year})`, requestId });
 

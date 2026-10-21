@@ -1,6 +1,7 @@
+import { approveMovieRequest, transition } from '../../core/approval';
 import { ButtonInteraction, MessageFlags } from 'discord.js';
 import type { RadarrClient } from '../../radarr/client';
-import { getRequest, updateRequestStatus } from '../../db/index';
+import { getRequest } from '../../db/index';
 import { buildApprovedEmbed, buildRejectedEmbed } from '../messages/index';
 import { createLogger } from '../../logger';
 
@@ -42,37 +43,11 @@ export async function handleApproveMovie(
     return;
   }
 
-  // Race condition guard
   const tmdbId = request.tmdb_id;
-  if (request.status !== 'pending') {
-    log.info('Request already processed', { tmdbId, status: request.status });
-    // Still acknowledge the interaction silently
-    await interaction.deferUpdate();
-    return;
-  }
-
-  // Acknowledge before doing API work
   await interaction.deferUpdate();
-
   try {
-    const results = await deps.radarrClient.searchMovies(`tmdb:${tmdbId}`);
-    if (results.length === 0) {
-      throw new Error(`Movie with TMDB ID ${tmdbId} no longer found in Radarr search`);
-    }
-
-    const movie = results[0]!;
-    await deps.radarrClient.addMovie(
-      movie,
-      deps.qualityProfileId,
-      deps.rootFolderPath,
-    );
-
-      const updatedRequest = updateRequestStatus({
-      id: request.id,
-      status: 'approved',
-      approver_slack_id: userId, // field name remains slack_id for schema compat
-      slack_message_ts: request.slack_message_ts ?? undefined,
-    });
+    if (!await approveMovieRequest(request, userId, { ...deps, radarrClient: deps.radarrClient! })) return;
+    const updatedRequest = getRequest(request.id)!;
 
     log.info('Movie added to Radarr', { tmdbId });
 
@@ -84,7 +59,7 @@ export async function handleApproveMovie(
       const requester = await interaction.client.users.fetch(request.requester_slack_id);
       await requester.send(`✅ Your request for **${request.movie_title}** has been approved and added to Radarr!`);
     } catch (e) {
-      log.warn('Failed to DM requester', { requesterId: request.requester_slack_id });
+      log.warn('Failed to DM requester', { requesterId: request.requester_slack_id, error: e instanceof Error ? e.message : String(e) });
     }
   } catch (error) {
     log.error('Failed to approve movie', { tmdbId, error: error instanceof Error ? error.message : String(error) });
@@ -128,21 +103,10 @@ export async function handleRejectMovie(
   }
 
   const tmdbId = request.tmdb_id;
-  if (request.status !== 'pending') {
-    log.info('Request already processed', { tmdbId, status: request.status });
-    await interaction.deferUpdate();
-    return;
-  }
-
   await interaction.deferUpdate();
-
   try {
-    const updatedRequest = updateRequestStatus({
-      id: request.id,
-      status: 'rejected',
-      approver_slack_id: userId,
-      slack_message_ts: request.slack_message_ts ?? undefined,
-    });
+    if (!transition('movie', request.id, 'pending', 'rejected', userId)) return;
+    const updatedRequest = getRequest(request.id)!;
 
     const newMsg = buildRejectedEmbed(updatedRequest, userId);
     await interaction.message.edit({ ...newMsg });
@@ -152,7 +116,7 @@ export async function handleRejectMovie(
       const requester = await interaction.client.users.fetch(request.requester_slack_id);
       await requester.send(`❌ Your request for **${request.movie_title}** was rejected.`);
     } catch (e) {
-      log.warn('Failed to DM requester', { requesterId: request.requester_slack_id });
+      log.warn('Failed to DM requester', { requesterId: request.requester_slack_id, error: e instanceof Error ? e.message : String(e) });
     }
   } catch (error) {
     log.error('Failed to reject movie', { tmdbId, error: error instanceof Error ? error.message : String(error) });

@@ -1,7 +1,8 @@
+import { approveTvRequest } from '../../core/approval';
 import type { App } from '@slack/bolt';
 import type { SonarrClient } from '../../sonarr/client';
 import { buildTvApprovedMessage, ACTION_IDS } from '../messages/index';
-import { getTvRequest, updateTvRequestStatus } from '../../db/index';
+import { getTvRequest } from '../../db/index';
 import { createLogger } from '../../logger';
 
 const log = createLogger('approve-tv');
@@ -48,27 +49,7 @@ export function registerApproveTvAction(app: App, deps: ApproveTvDeps): void {
         return;
       }
 
-      if (request.status !== 'pending') {
-        log.warn('Request not pending', { requestId, status: request.status });
-        return;
-      }
-
-      const searchResults = await deps.sonarrClient.searchSeries(request.show_title);
-      const showData = searchResults.find(s => s.tvdbId === request.tvdb_id);
-      if (!showData) {
-        await respond({
-          response_type: 'ephemeral',
-          replace_original: false,
-          text: ':x: Could not find TV show data in Sonarr. It may have been removed.',
-        });
-        return;
-      }
-
-      await deps.sonarrClient.addSeries(showData, deps.qualityProfileId, deps.rootFolderPath);
-
-      log.info('Sonarr series added', { requestId });
-
-      updateTvRequestStatus({ id: request.id, status: 'approved', approver_slack_id: approverId });
+      if (!await approveTvRequest(request, approverId, deps)) return;
 
       log.info('TV show approved', { approver: approverId, show: `${request.show_title} (${request.year})`, requestId });
 
@@ -94,7 +75,7 @@ export function registerApproveTvAction(app: App, deps: ApproveTvDeps): void {
       await respond({
         response_type: 'ephemeral',
         replace_original: false,
-        text: ':x: Failed to approve the TV show. Please try again.',
+        text: ':x: Failed to approve the TV show. Check the request status. Uncertain submissions are reconciled without resending.',
       });
     }
   });

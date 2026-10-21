@@ -357,7 +357,7 @@ export type QueueItem = {
 };
 
 const STATUS_EMOJI: Record<string, string> = {
-  pending: '⏳',
+  submitting: '⏳', uncertain: '⚠️', pending: '⏳',
   approved: '✅',
   rejected: '❌',
   already_exists: 'ℹ️',
@@ -365,7 +365,7 @@ const STATUS_EMOJI: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  pending: 'Pending',
+  submitting: 'Submitting', uncertain: 'Uncertain — click Approve to check Arr', pending: 'Pending',
   approved: 'Approved',
   rejected: 'Rejected',
   already_exists: 'Already in library',

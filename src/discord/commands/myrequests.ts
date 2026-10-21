@@ -31,8 +31,8 @@ export async function executeMyRequestsCommand(interaction: ChatInputCommandInte
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
-    const movieRequests = getRequestsByUserId(userId, statusFilter ?? undefined);
-    const tvRequests = getTvRequestsByUserId(userId, statusFilter ?? undefined);
+    const movieRequests = getRequestsByUserId(userId, statusFilter ?? undefined, 'discord');
+    const tvRequests = getTvRequestsByUserId(userId, statusFilter ?? undefined, 'discord');
 
     const allRequests = [...movieRequests, ...tvRequests].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()

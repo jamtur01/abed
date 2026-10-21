@@ -73,6 +73,15 @@ export async function createDiscordApp(deps: DiscordAppDeps, radarrClient: Radar
 
   client.on('interactionCreate', async (interaction: Interaction) => {
     try {
+      const approval = interaction.isButton() && /^(approve|reject)_/.test(interaction.customId);
+      const channel = approval ? deps.approvalChannelId : deps.requestChannelId;
+      if (interaction.channelId !== channel || interaction.guildId !== deps.guildId) {
+        if (interaction.isRepliable()) await interaction.reply({
+          content: 'Use the configured request or approval channel for this action.',
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
       if (interaction.isChatInputCommand()) {
         const { commandName } = interaction;
 

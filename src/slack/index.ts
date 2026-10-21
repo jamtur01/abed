@@ -1,3 +1,4 @@
+import { registerChannelBoundary } from './boundary';
 import { App } from '@slack/bolt';
 import type { RadarrClient } from '../radarr/client';
 import type { SonarrClient } from '../sonarr/client';
@@ -13,6 +14,7 @@ import { registerMyRequestsCommand } from './commands/myrequests';
 import { registerQueueCommand } from './commands/queue';
 
 export function createSlackApp(config: {
+  requestChannelId: string;
   botToken: string;
   appToken: string;
   approvalChannelId: string;
@@ -30,6 +32,8 @@ export function createSlackApp(config: {
     appToken: config.appToken,
     socketMode: true,
   });
+
+  registerChannelBoundary(app, config);
 
   registerMovieCommand(app, { radarrClient, approvalChannelId: config.approvalChannelId });
   registerSelectMovieAction(app, { radarrClient, approvalChannelId: config.approvalChannelId });

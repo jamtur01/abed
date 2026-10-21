@@ -31,8 +31,8 @@ export async function executeQueueCommand(interaction: ChatInputCommandInteracti
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
-    const movieRequests = getAllRequests(statusFilter ?? undefined);
-    const tvRequests = getAllTvRequests(statusFilter ?? undefined);
+    const movieRequests = getAllRequests(statusFilter ?? undefined, 'discord');
+    const tvRequests = getAllTvRequests(statusFilter ?? undefined, 'discord');
 
     const allRequests = [...movieRequests, ...tvRequests].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()

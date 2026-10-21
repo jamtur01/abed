@@ -71,6 +71,7 @@ async function main(): Promise<void> {
   
   if (config.slack) {
     slackApp = createSlackApp({
+      requestChannelId: config.slack.requestChannelId,
       botToken: config.slack.botToken,
       appToken: config.slack.appToken,
       approvalChannelId: config.slack.approvalChannelId,

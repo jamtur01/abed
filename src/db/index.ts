@@ -7,6 +7,7 @@ import type {
   CreateTvRequestInput,
   UpdateTvRequestStatusInput,
   RequestStatus,
+  Platform,
 } from './types';
 
 const DB_PATH = process.env.DB_PATH ?? './data/requests.db';
@@ -164,28 +165,22 @@ export function getRequestByTmdbId(tmdbId: number): MovieRequest | null {
   );
 }
 
-export function getRequestsByUserId(slackId: string, status?: RequestStatus): MovieRequest[] {
-  const db = getDb();
-  if (status) {
-    return db.prepare<MovieRequest, [string, string]>(
-      'SELECT * FROM requests WHERE requester_slack_id = ? AND status = ? ORDER BY created_at DESC LIMIT 15',
-    ).all(slackId, status);
-  }
-  return db.prepare<MovieRequest, [string]>(
-    'SELECT * FROM requests WHERE requester_slack_id = ? ORDER BY created_at DESC LIMIT 15',
-  ).all(slackId);
+export function getRequestsByUserId(userId: string, status?: RequestStatus, platform: Platform = 'slack'): MovieRequest[] {
+  const filters = ['platform = ? AND requester_slack_id = ?'];
+  const values: string[] = [platform, userId];
+  if (status) { filters.push('status = ?'); values.push(status); }
+  return getDb().query<MovieRequest, string[]>(
+    `SELECT * FROM requests WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT 15`,
+  ).all(...values);
 }
 
-export function getAllRequests(status?: RequestStatus): MovieRequest[] {
-  const db = getDb();
-  if (status) {
-    return db.prepare<MovieRequest, [string]>(
-      'SELECT * FROM requests WHERE status = ? ORDER BY created_at DESC LIMIT 25',
-    ).all(status);
-  }
-  return db.prepare<MovieRequest, []>(
-    'SELECT * FROM requests ORDER BY created_at DESC LIMIT 25',
-  ).all();
+export function getAllRequests(status?: RequestStatus, platform: Platform = 'slack'): MovieRequest[] {
+  const filters = ['platform = ?'];
+  const values: string[] = [platform];
+  if (status) { filters.push('status = ?'); values.push(status); }
+  return getDb().query<MovieRequest, string[]>(
+    `SELECT * FROM requests WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT 25`,
+  ).all(...values);
 }
 
 export function updateRequestStatus(input: UpdateRequestStatusInput): MovieRequest {
@@ -246,28 +241,22 @@ export function getTvRequestByTvdbId(tvdbId: number): TvRequest | null {
   );
 }
 
-export function getTvRequestsByUserId(slackId: string, status?: RequestStatus): TvRequest[] {
-  const db = getDb();
-  if (status) {
-    return db.prepare<TvRequest, [string, string]>(
-      'SELECT * FROM tv_requests WHERE requester_slack_id = ? AND status = ? ORDER BY created_at DESC LIMIT 15',
-    ).all(slackId, status);
-  }
-  return db.prepare<TvRequest, [string]>(
-    'SELECT * FROM tv_requests WHERE requester_slack_id = ? ORDER BY created_at DESC LIMIT 15',
-  ).all(slackId);
+export function getTvRequestsByUserId(userId: string, status?: RequestStatus, platform: Platform = 'slack'): TvRequest[] {
+  const filters = ['platform = ? AND requester_slack_id = ?'];
+  const values: string[] = [platform, userId];
+  if (status) { filters.push('status = ?'); values.push(status); }
+  return getDb().query<TvRequest, string[]>(
+    `SELECT * FROM tv_requests WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT 15`,
+  ).all(...values);
 }
 
-export function getAllTvRequests(status?: RequestStatus): TvRequest[] {
-  const db = getDb();
-  if (status) {
-    return db.prepare<TvRequest, [string]>(
-      'SELECT * FROM tv_requests WHERE status = ? ORDER BY created_at DESC LIMIT 25',
-    ).all(status);
-  }
-  return db.prepare<TvRequest, []>(
-    'SELECT * FROM tv_requests ORDER BY created_at DESC LIMIT 25',
-  ).all();
+export function getAllTvRequests(status?: RequestStatus, platform: Platform = 'slack'): TvRequest[] {
+  const filters = ['platform = ?'];
+  const values: string[] = [platform];
+  if (status) { filters.push('status = ?'); values.push(status); }
+  return getDb().query<TvRequest, string[]>(
+    `SELECT * FROM tv_requests WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT 25`,
+  ).all(...values);
 }
 
 export function updateTvRequestStatus(input: UpdateTvRequestStatusInput): TvRequest {

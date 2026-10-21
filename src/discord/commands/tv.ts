@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, MessageFlags } from 'discord.js';
 import type { SonarrClient } from '../../sonarr/client';
-import { getTvResults, storeTvResults } from '../../core/searchCache';
+import { storeTvResults } from '../../core/searchCache';
 import { buildTvCarouselPage } from '../messages/index';
 import { createLogger } from '../../logger';
 
@@ -9,15 +9,13 @@ const log = createLogger('discord-tv-cmd');
 export const tvCommandDef = new SlashCommandBuilder()
   .setName('tv')
   .setDescription('Search and request a TV show from Sonarr')
-  .addStringOption(option =>
-    option.setName('title')
-      .setDescription('The title of the TV show')
-      .setRequired(true)
+  .addStringOption((option) =>
+    option.setName('title').setDescription('The title of the TV show').setRequired(true),
   );
 
 export async function executeTvCommand(
   interaction: ChatInputCommandInteraction,
-  deps: { sonarr: { sonarrClient: SonarrClient } | null }
+  deps: { sonarr: { sonarrClient: SonarrClient } | null },
 ) {
   const userId = interaction.user.id;
 
@@ -58,7 +56,10 @@ export async function executeTvCommand(
       ...messagePayload,
     });
   } catch (error) {
-    log.error('Error in /tv command', { user: userId, error: error instanceof Error ? error.message : String(error) });
+    log.error('Error in /tv command', {
+      user: userId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     await interaction.editReply({
       content: '❌ Failed to search for TV shows. Please try again.',
     });

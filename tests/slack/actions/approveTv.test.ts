@@ -1,13 +1,21 @@
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
 import { registerApproveTvAction } from '../../../src/slack/actions/approveTv';
-import { _resetDb, getDb, createTvRequest, getTvRequestByTvdbId, updateTvRequestStatus } from '../../../src/db/index';
+import {
+  _resetDb,
+  getDb,
+  createTvRequest,
+  getTvRequestByTvdbId,
+  updateTvRequestStatus,
+} from '../../../src/db/index';
 import { ACTION_IDS } from '../../../src/slack/messages/index';
 import { _setLoggerOutput } from '../../../src/logger';
 
 function createMockApp() {
   const handlers: Record<string, Function> = {};
   return {
-    action: (id: string, handler: Function) => { handlers[id] = handler; },
+    action: (id: string, handler: Function) => {
+      handlers[id] = handler;
+    },
     getHandler: (id: string) => handlers[id],
   };
 }
@@ -15,7 +23,8 @@ function createMockApp() {
 function mockActionPayload(tvdbIdStr: string, userId = 'U_APPROVER') {
   return {
     body: {
-      channel: { id: 'C_APPROVAL' }, message: { ts: '111.222' },
+      channel: { id: 'C_APPROVAL' },
+      message: { ts: '111.222' },
       user: { id: userId },
       actions: [{ action_id: ACTION_IDS.APPROVE_TV, value: 'request:1' }],
     },
@@ -41,16 +50,19 @@ const mockShowData = {
     { seasonNumber: 0, monitored: false },
     { seasonNumber: 1, monitored: true },
   ],
-  images: [
-    { coverType: 'poster', remoteUrl: 'https://example.com/poster.jpg' },
-  ],
+  images: [{ coverType: 'poster', remoteUrl: 'https://example.com/poster.jpg' }],
 };
 
 function createMockSonarrClient() {
   return {
     searchSeries: mock(async (_: string) => [mockShowData]),
     addSeries: mock(async (_: any, __: number, ___: string) => ({
-      id: 1, title: 'Breaking Bad', year: 2008, tvdbId: 81189, monitored: true, status: 'ended',
+      id: 1,
+      title: 'Breaking Bad',
+      year: 2008,
+      tvdbId: 81189,
+      monitored: true,
+      status: 'ended',
     })),
     seriesExists: mock(async (_: number) => false),
   };
@@ -102,7 +114,7 @@ describe('approveTv action', () => {
     await app.getHandler(ACTION_IDS.APPROVE_TV)!({ body, ack, respond, client });
 
     expect(respond).toHaveBeenCalledWith(
-      expect.objectContaining({ text: expect.stringContaining('not authorized') })
+      expect.objectContaining({ text: expect.stringContaining('not authorized') }),
     );
     expect(sonarrClient.addSeries).not.toHaveBeenCalled();
   });
@@ -114,9 +126,13 @@ describe('approveTv action', () => {
       year: 2008,
       poster_url: null,
       approval_channel_id: 'C_APPROVAL',
-    requester_slack_id: 'U_REQUESTER',
+      requester_slack_id: 'U_REQUESTER',
     });
-    updateTvRequestStatus({ id: req.id, status: 'approved', approver_slack_id: 'U_OTHER_APPROVER' });
+    updateTvRequestStatus({
+      id: req.id,
+      status: 'approved',
+      approver_slack_id: 'U_OTHER_APPROVER',
+    });
 
     registerApproveTvAction(app as any, { ...defaultDeps, sonarrClient: sonarrClient as any });
     const { body, ack, respond, client } = mockActionPayload('81189');
@@ -157,7 +173,7 @@ describe('approveTv action', () => {
     await app.getHandler(ACTION_IDS.APPROVE_TV)!({ body, ack, respond, client });
 
     expect(client.chat.update).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: 'C_APPROVAL', ts: '111.222' })
+      expect.objectContaining({ channel: 'C_APPROVAL', ts: '111.222' }),
     );
   });
 
@@ -168,7 +184,10 @@ describe('approveTv action', () => {
     await app.getHandler(ACTION_IDS.APPROVE_TV)!({ body, ack, respond, client });
 
     expect(client.chat.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: 'U_REQUESTER', text: expect.stringContaining('approved') })
+      expect.objectContaining({
+        channel: 'U_REQUESTER',
+        text: expect.stringContaining('approved'),
+      }),
     );
   });
 });

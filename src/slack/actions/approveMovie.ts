@@ -20,8 +20,7 @@ export function registerApproveMovieAction(app: App, deps: ApproveMovieDeps): vo
     await ack();
 
     const action = (body as any).actions[0];
-    const requestId = /^request:[1-9]\d*$/.test(action.value)
-      ? Number(action.value.slice(8)) : NaN;
+    const requestId = /^request:[1-9]\d*$/.test(action.value) ? Number(action.value.slice(8)) : NaN;
     const approverId = body.user.id;
 
     if (!deps.approverSlackIds.includes(approverId)) {
@@ -36,11 +35,14 @@ export function registerApproveMovieAction(app: App, deps: ApproveMovieDeps): vo
 
     try {
       const request = Number.isSafeInteger(requestId) ? getRequest(requestId) : null;
-      if (!request || request.platform !== 'slack'
-        || request.approval_channel_id !== deps.approvalChannelId
-        || (body as any).channel?.id !== request.approval_channel_id
-        || !request.slack_message_ts
-        || (body as any).message?.ts !== request.slack_message_ts) {
+      if (
+        !request ||
+        request.platform !== 'slack' ||
+        request.approval_channel_id !== deps.approvalChannelId ||
+        (body as any).channel?.id !== request.approval_channel_id ||
+        !request.slack_message_ts ||
+        (body as any).message?.ts !== request.slack_message_ts
+      ) {
         await respond({
           response_type: 'ephemeral',
           replace_original: false,
@@ -49,9 +51,13 @@ export function registerApproveMovieAction(app: App, deps: ApproveMovieDeps): vo
         return;
       }
 
-      if (!await approveMovieRequest(request, approverId, deps)) return;
+      if (!(await approveMovieRequest(request, approverId, deps))) return;
 
-      log.info('Movie approved', { approver: approverId, movie: `${request.movie_title} (${request.year})`, requestId });
+      log.info('Movie approved', {
+        approver: approverId,
+        movie: `${request.movie_title} (${request.year})`,
+        requestId,
+      });
 
       if (request.slack_message_ts) {
         await client.chat.update({
@@ -71,7 +77,11 @@ export function registerApproveMovieAction(app: App, deps: ApproveMovieDeps): vo
         text: `:white_check_mark: Your request for *${request.movie_title} (${request.year})* has been approved by <@${approverId}>! Radarr is on it.`,
       });
     } catch (error) {
-      log.error('Error in approveMovie action', { user: approverId, requestId, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in approveMovie action', {
+        user: approverId,
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,

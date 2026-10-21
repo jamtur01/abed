@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, MessageFlags } from 'discord.js';
 import type { RadarrClient } from '../../radarr/client';
-import { getResults, storeResults } from '../../core/searchCache';
+import { storeResults } from '../../core/searchCache';
 import { buildMovieCarouselPage } from '../messages/index';
 import { createLogger } from '../../logger';
 
@@ -9,15 +9,13 @@ const log = createLogger('discord-movie-cmd');
 export const movieCommandDef = new SlashCommandBuilder()
   .setName('movie')
   .setDescription('Search and request a movie from Radarr')
-  .addStringOption(option =>
-    option.setName('title')
-      .setDescription('The title or IMDB URL of the movie')
-      .setRequired(true)
+  .addStringOption((option) =>
+    option.setName('title').setDescription('The title or IMDB URL of the movie').setRequired(true),
   );
 
 export async function executeMovieCommand(
   interaction: ChatInputCommandInteraction,
-  deps: { radarrClient: RadarrClient }
+  deps: { radarrClient: RadarrClient },
 ) {
   const query = interaction.options.getString('title', true).trim();
   const userId = interaction.user.id;
@@ -26,7 +24,7 @@ export async function executeMovieCommand(
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  // For Discord, we will just use the standard search for now. 
+  // For Discord, we will just use the standard search for now.
   // IMDB detection can be added identically to Slack later, but abstracting Radarr API is first
   try {
     const results = await deps.radarrClient.searchMovies(query);
@@ -50,7 +48,10 @@ export async function executeMovieCommand(
       ...messagePayload,
     });
   } catch (error) {
-    log.error('Error in /movie command', { user: userId, error: error instanceof Error ? error.message : String(error) });
+    log.error('Error in /movie command', {
+      user: userId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     await interaction.editReply({
       content: '❌ Failed to search for movies. Please try again.',
     });

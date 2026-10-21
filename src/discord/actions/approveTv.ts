@@ -14,7 +14,7 @@ export async function handleApproveTv(
     approverDiscordIds: string[];
     qualityProfileId: number;
     rootFolderPath: string;
-  }
+  },
 ) {
   const userId = interaction.user.id;
   const value = interaction.customId.replace('approve_tv_request_', '');
@@ -40,9 +40,14 @@ export async function handleApproveTv(
   }
 
   const request = Number.isSafeInteger(requestId) ? getTvRequest(requestId) : null;
-  if (!request || request.platform !== 'discord'
-    || !request.approval_channel_id || interaction.channelId !== request.approval_channel_id
-    || !request.slack_message_ts || interaction.message.id !== request.slack_message_ts) {
+  if (
+    !request ||
+    request.platform !== 'discord' ||
+    !request.approval_channel_id ||
+    interaction.channelId !== request.approval_channel_id ||
+    !request.slack_message_ts ||
+    interaction.message.id !== request.slack_message_ts
+  ) {
     log.warn('Request not found in DB', { requestId });
     await interaction.reply({
       content: '❌ Request not found in database.',
@@ -54,7 +59,8 @@ export async function handleApproveTv(
   const tvdbId = request.tvdb_id;
   await interaction.deferUpdate();
   try {
-    if (!await approveTvRequest(request, userId, { ...deps, sonarrClient: deps.sonarrClient! })) return;
+    if (!(await approveTvRequest(request, userId, { ...deps, sonarrClient: deps.sonarrClient! })))
+      return;
     const updatedRequest = getTvRequest(request.id)!;
 
     log.info('Show added to Sonarr', { tvdbId });
@@ -65,12 +71,20 @@ export async function handleApproveTv(
     // DM requester
     try {
       const requester = await interaction.client.users.fetch(request.requester_slack_id);
-      await requester.send(`✅ Your request for **${request.show_title}** has been approved and added to Sonarr!`);
+      await requester.send(
+        `✅ Your request for **${request.show_title}** has been approved and added to Sonarr!`,
+      );
     } catch (e) {
-      log.warn('Failed to DM requester', { requesterId: request.requester_slack_id, error: e instanceof Error ? e.message : String(e) });
+      log.warn('Failed to DM requester', {
+        requesterId: request.requester_slack_id,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   } catch (error) {
-    log.error('Failed to approve TV show', { tvdbId, error: error instanceof Error ? error.message : String(error) });
+    log.error('Failed to approve TV show', {
+      tvdbId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     await interaction.followUp({
       content: `❌ Failed to add show to Sonarr: ${error instanceof Error ? error.message : 'Unknown error'}`,
       flags: MessageFlags.Ephemeral,
@@ -80,7 +94,7 @@ export async function handleApproveTv(
 
 export async function handleRejectTv(
   interaction: ButtonInteraction,
-  deps: { approverDiscordIds: string[] }
+  deps: { approverDiscordIds: string[] },
 ) {
   const userId = interaction.user.id;
   const value = interaction.customId.replace('reject_tv_request_', '');
@@ -98,9 +112,14 @@ export async function handleRejectTv(
   }
 
   const request = Number.isSafeInteger(requestId) ? getTvRequest(requestId) : null;
-  if (!request || request.platform !== 'discord'
-    || !request.approval_channel_id || interaction.channelId !== request.approval_channel_id
-    || !request.slack_message_ts || interaction.message.id !== request.slack_message_ts) {
+  if (
+    !request ||
+    request.platform !== 'discord' ||
+    !request.approval_channel_id ||
+    interaction.channelId !== request.approval_channel_id ||
+    !request.slack_message_ts ||
+    interaction.message.id !== request.slack_message_ts
+  ) {
     log.warn('Request not found in DB', { requestId });
     await interaction.reply({
       content: '❌ Request not found in database.',
@@ -123,9 +142,15 @@ export async function handleRejectTv(
       const requester = await interaction.client.users.fetch(request.requester_slack_id);
       await requester.send(`❌ Your request for **${request.show_title}** was rejected.`);
     } catch (e) {
-      log.warn('Failed to DM requester', { requesterId: request.requester_slack_id, error: e instanceof Error ? e.message : String(e) });
+      log.warn('Failed to DM requester', {
+        requesterId: request.requester_slack_id,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   } catch (error) {
-    log.error('Failed to reject TV show', { tvdbId, error: error instanceof Error ? error.message : String(error) });
+    log.error('Failed to reject TV show', {
+      tvdbId,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }

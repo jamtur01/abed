@@ -14,7 +14,12 @@ import { executeQueueCommand, queueCommandDef } from './commands/queue';
 // Actions
 import { handleApproveMovie, handleRejectMovie } from './actions/approveMovie';
 import { handleApproveTv, handleRejectTv } from './actions/approveTv';
-import { handleMovieCarouselNav, handleTvCarouselNav, handleMovieCarouselRequest, handleTvCarouselRequest } from './actions/navigate';
+import {
+  handleMovieCarouselNav,
+  handleTvCarouselNav,
+  handleMovieCarouselRequest,
+  handleTvCarouselRequest,
+} from './actions/navigate';
 
 const log = createLogger('discord');
 
@@ -34,7 +39,10 @@ export type DiscordAppDeps = {
   } | null;
 };
 
-export async function createDiscordApp(deps: DiscordAppDeps, radarrClient: RadarrClient): Promise<Client> {
+export async function createDiscordApp(
+  deps: DiscordAppDeps,
+  radarrClient: RadarrClient,
+): Promise<Client> {
   const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
   });
@@ -51,20 +59,16 @@ export async function createDiscordApp(deps: DiscordAppDeps, radarrClient: Radar
 
     try {
       log.info('Started refreshing application (/) commands.');
-      
+
       // If guildId is provided, register guild-specific commands (instant)
       // Otherwise, register global commands (takes up to 1 hour to cache on Discord's end)
       if (deps.guildId) {
-        await rest.put(
-          Routes.applicationGuildCommands(deps.clientId, deps.guildId) as any,
-          { body: commands }
-        );
+        await rest.put(Routes.applicationGuildCommands(deps.clientId, deps.guildId) as any, {
+          body: commands,
+        });
         log.info(`Successfully reloaded guild (/) commands for guild ${deps.guildId}`);
       } else {
-        await rest.put(
-          Routes.applicationCommands(deps.clientId) as any,
-          { body: commands }
-        );
+        await rest.put(Routes.applicationCommands(deps.clientId) as any, { body: commands });
         log.info('Successfully reloaded global (/) commands.');
       }
     } catch (error) {
@@ -77,18 +81,23 @@ export async function createDiscordApp(deps: DiscordAppDeps, radarrClient: Radar
       const approval = interaction.isButton() && /^(approve|reject)_/.test(interaction.customId);
       const channel = approval ? deps.approvalChannelId : deps.requestChannelId;
       if (interaction.channelId !== channel || interaction.guildId !== deps.guildId) {
-        if (interaction.isRepliable()) await interaction.reply({
-          content: 'Use the configured request or approval channel for this action.',
-          flags: MessageFlags.Ephemeral,
-        });
+        if (interaction.isRepliable())
+          await interaction.reply({
+            content: 'Use the configured request or approval channel for this action.',
+            flags: MessageFlags.Ephemeral,
+          });
         return;
       }
-      if (!approval && (!interaction.isChatInputCommand()
-        || ['movie', 'tv'].includes(interaction.commandName))
-        && !consumeRequestBudget('discord', interaction.user.id)) {
-        if (interaction.isRepliable()) await interaction.reply({
-          content: 'Too many requests. Wait a minute before trying again.', flags: MessageFlags.Ephemeral,
-        });
+      if (
+        !approval &&
+        (!interaction.isChatInputCommand() || ['movie', 'tv'].includes(interaction.commandName)) &&
+        !consumeRequestBudget('discord', interaction.user.id)
+      ) {
+        if (interaction.isRepliable())
+          await interaction.reply({
+            content: 'Too many requests. Wait a minute before trying again.',
+            flags: MessageFlags.Ephemeral,
+          });
         return;
       }
       if (interaction.isChatInputCommand()) {
@@ -104,9 +113,15 @@ export async function createDiscordApp(deps: DiscordAppDeps, radarrClient: Radar
           await executeQueueCommand(interaction);
         }
       } else if (interaction.isButton()) {
-        if (interaction.customId.startsWith('movie_prev_') || interaction.customId.startsWith('movie_next_')) {
+        if (
+          interaction.customId.startsWith('movie_prev_') ||
+          interaction.customId.startsWith('movie_next_')
+        ) {
           await handleMovieCarouselNav(interaction);
-        } else if (interaction.customId.startsWith('tv_prev_') || interaction.customId.startsWith('tv_next_')) {
+        } else if (
+          interaction.customId.startsWith('tv_prev_') ||
+          interaction.customId.startsWith('tv_next_')
+        ) {
           await handleTvCarouselNav(interaction);
         } else if (interaction.customId.startsWith('movie_request_')) {
           await handleMovieCarouselRequest(interaction, {
@@ -144,7 +159,7 @@ export async function createDiscordApp(deps: DiscordAppDeps, radarrClient: Radar
       }
     } catch (error) {
       log.error(`Error handling interaction: ${error}`);
-      
+
       // Ensure we always reply or edit reply if something failed
       const payload = {
         content: 'There was an error while executing this command!',

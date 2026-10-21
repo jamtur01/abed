@@ -9,8 +9,9 @@ const log = createLogger('discord-myrequests-cmd');
 export const myRequestsCommandDef = new SlashCommandBuilder()
   .setName('myrequests')
   .setDescription('View your movie and TV show requests')
-  .addStringOption(option =>
-    option.setName('status')
+  .addStringOption((option) =>
+    option
+      .setName('status')
       .setDescription('Filter by request status')
       .setRequired(false)
       .addChoices(
@@ -18,8 +19,8 @@ export const myRequestsCommandDef = new SlashCommandBuilder()
         { name: 'Approved', value: 'approved' },
         { name: 'Rejected', value: 'rejected' },
         { name: 'Already Exists', value: 'already_exists' },
-        { name: 'Failed', value: 'failed' }
-      )
+        { name: 'Failed', value: 'failed' },
+      ),
   );
 
 export async function executeMyRequestsCommand(interaction: ChatInputCommandInteraction) {
@@ -35,7 +36,7 @@ export async function executeMyRequestsCommand(interaction: ChatInputCommandInte
     const tvRequests = getTvRequestsByUserId(userId, statusFilter ?? undefined, 'discord');
 
     const allRequests = [...movieRequests, ...tvRequests].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 
     const topRequests = allRequests.slice(0, 15);

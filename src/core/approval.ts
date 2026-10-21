@@ -1,10 +1,10 @@
-import { getDb } from "../db/index";
-import type { MovieRequest, TvRequest, RequestStatus } from "../db/types";
-import type { RadarrClient } from "../radarr/client";
-import type { SonarrClient } from "../sonarr/client";
+import { getDb } from '../db/index';
+import type { MovieRequest, TvRequest, RequestStatus } from '../db/types';
+import type { RadarrClient } from '../radarr/client';
+import type { SonarrClient } from '../sonarr/client';
 
-type Kind = "movie" | "tv";
-const table = (kind: Kind) => (kind === "movie" ? "requests" : "tv_requests");
+type Kind = 'movie' | 'tv';
+const table = (kind: Kind) => (kind === 'movie' ? 'requests' : 'tv_requests');
 
 /** Persist a decision only if this event still owns the expected state. */
 export function transition(
@@ -32,26 +32,26 @@ async function settleApproval<T>(options: {
   exists: () => Promise<boolean>;
 }): Promise<boolean> {
   const { kind, request, actor } = options;
-  if (!["pending", "uncertain"].includes(request.status)) return false;
-  if (!transition(kind, request.id, request.status, "submitting", actor)) return false;
-  let writeStarted = request.status === "uncertain";
+  if (!['pending', 'uncertain'].includes(request.status)) return false;
+  if (!transition(kind, request.id, request.status, 'submitting', actor)) return false;
+  let writeStarted = request.status === 'uncertain';
   try {
     if (writeStarted) {
       if (!(await options.exists())) {
-        throw new Error("Submission remains uncertain. Check Arr before any manual retry.");
+        throw new Error('Submission remains uncertain. Check Arr before any manual retry.');
       }
     } else {
       const data = await options.lookup();
-      if (!data) throw new Error("Could not find the exact requested title in Arr.");
+      if (!data) throw new Error('Could not find the exact requested title in Arr.');
       writeStarted = true;
       await options.add(data);
     }
-    if (!transition(kind, request.id, "submitting", "approved", actor)) {
-      throw new Error("Approval state changed unexpectedly; check Arr and the request database.");
+    if (!transition(kind, request.id, 'submitting', 'approved', actor)) {
+      throw new Error('Approval state changed unexpectedly; check Arr and the request database.');
     }
     return true;
   } catch (error) {
-    transition(kind, request.id, "submitting", writeStarted ? "uncertain" : "pending", actor);
+    transition(kind, request.id, 'submitting', writeStarted ? 'uncertain' : 'pending', actor);
     throw error;
   }
 }
@@ -66,7 +66,7 @@ export function approveMovieRequest(
   },
 ): Promise<boolean> {
   return settleApproval({
-    kind: "movie",
+    kind: 'movie',
     request,
     actor,
     lookup: async () =>
@@ -89,7 +89,7 @@ export function approveTvRequest(
   },
 ): Promise<boolean> {
   return settleApproval({
-    kind: "tv",
+    kind: 'tv',
     request,
     actor,
     lookup: async () =>

@@ -11,7 +11,7 @@ describe('Discord Approve/Reject TV', () => {
   beforeEach(() => {
     _resetDb();
     getDb(':memory:');
-    
+
     mockInteraction = {
       channelId: 'C_APPROVAL',
       user: { id: 'A123' },
@@ -36,7 +36,12 @@ describe('Discord Approve/Reject TV', () => {
   describe('handleApproveTv', () => {
     test('responds ephemerally when user is not an approver', async () => {
       mockInteraction.user.id = 'NOT_APPROVER';
-      await handleApproveTv(mockInteraction, { sonarrClient: mockSonarrClient as unknown as SonarrClient, approverDiscordIds, qualityProfileId: 1, rootFolderPath: '/' });
+      await handleApproveTv(mockInteraction, {
+        sonarrClient: mockSonarrClient as unknown as SonarrClient,
+        approverDiscordIds,
+        qualityProfileId: 1,
+        rootFolderPath: '/',
+      });
       expect(mockInteraction.reply).toHaveBeenCalled();
       const args = mockInteraction.reply.mock.calls[0][0];
       expect(args.content).toInclude('not authorized');
@@ -49,14 +54,21 @@ describe('Discord Approve/Reject TV', () => {
         tvdb_id: 456,
         year: 2008,
         requester_slack_id: 'U123',
-        platform: 'discord', approval_channel_id: 'C_APPROVAL', slack_message_ts: 'message1',
+        platform: 'discord',
+        approval_channel_id: 'C_APPROVAL',
+        slack_message_ts: 'message1',
       });
-      
-      await handleApproveTv(mockInteraction, { sonarrClient: mockSonarrClient as unknown as SonarrClient, approverDiscordIds, qualityProfileId: 1, rootFolderPath: '/' });
-      
+
+      await handleApproveTv(mockInteraction, {
+        sonarrClient: mockSonarrClient as unknown as SonarrClient,
+        approverDiscordIds,
+        qualityProfileId: 1,
+        rootFolderPath: '/',
+      });
+
       expect(mockInteraction.deferUpdate).toHaveBeenCalled();
       expect(mockSonarrClient.addSeries).toHaveBeenCalled();
-      
+
       const req = getTvRequestByTvdbId(456);
       expect(req?.status).toBe('approved');
       expect(req?.approver_slack_id).toBe('A123'); // Still saved under slack_id for schema compat
@@ -74,13 +86,15 @@ describe('Discord Approve/Reject TV', () => {
         tvdb_id: 456,
         year: 2008,
         requester_slack_id: 'U123',
-        platform: 'discord', approval_channel_id: 'C_APPROVAL', slack_message_ts: 'message1',
+        platform: 'discord',
+        approval_channel_id: 'C_APPROVAL',
+        slack_message_ts: 'message1',
       });
-      
+
       await handleRejectTv(mockInteraction, { approverDiscordIds });
-      
+
       expect(mockInteraction.deferUpdate).toHaveBeenCalled();
-      
+
       const req = getTvRequestByTvdbId(456);
       expect(req?.status).toBe('rejected');
     });

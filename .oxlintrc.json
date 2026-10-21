@@ -1,0 +1,6 @@
+{
+  "plugins": ["typescript", "import", "unicorn"],
+  "rules": {
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }]
+  }
+}

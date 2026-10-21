@@ -87,7 +87,7 @@ describe('buildSearchResultsMessage', () => {
       title: `Movie ${i + 1}`,
     }));
     const blocks = buildSearchResultsMessage(manyMovies);
-    const actionBlocks = blocks.filter(b => b.type === 'actions');
+    const actionBlocks = blocks.filter((b) => b.type === 'actions');
     expect(actionBlocks).toHaveLength(5);
   });
 
@@ -164,7 +164,12 @@ describe('buildRejectedMessage', () => {
   });
 
   it('includes reason when provided', () => {
-    const blocks = buildRejectedMessage({ title: 'The Batman', year: 2022 }, 'U_REQ', 'U_APP', 'Already on Plex');
+    const blocks = buildRejectedMessage(
+      { title: 'The Batman', year: 2022 },
+      'U_REQ',
+      'U_APP',
+      'Already on Plex',
+    );
     const firstBlock = blocks[0] as any;
     expect(firstBlock.text.text).toContain('Reason: Already on Plex');
   });
@@ -267,7 +272,7 @@ describe('buildTvSearchResultsMessage', () => {
       title: `Show ${i + 1}`,
     }));
     const blocks = buildTvSearchResultsMessage(manyShows);
-    const actionBlocks = blocks.filter(b => b.type === 'actions');
+    const actionBlocks = blocks.filter((b) => b.type === 'actions');
     expect(actionBlocks).toHaveLength(5);
   });
 
@@ -303,7 +308,14 @@ describe('buildTvApprovalRequestMessage', () => {
 
   it('includes network and season count', () => {
     const blocks = buildTvApprovalRequestMessage(
-      { title: 'Breaking Bad', year: 2008, tvdbId: 81189, posterUrl: null, network: 'AMC', seasonCount: 5 },
+      {
+        title: 'Breaking Bad',
+        year: 2008,
+        tvdbId: 81189,
+        posterUrl: null,
+        network: 'AMC',
+        seasonCount: 5,
+      },
       'U_REQUESTER',
       42,
     );
@@ -352,7 +364,12 @@ describe('buildTvRejectedMessage', () => {
   });
 
   it('includes reason when provided', () => {
-    const blocks = buildTvRejectedMessage({ title: 'Breaking Bad', year: 2008 }, 'U_REQ', 'U_APP', 'Already watched');
+    const blocks = buildTvRejectedMessage(
+      { title: 'Breaking Bad', year: 2008 },
+      'U_REQ',
+      'U_APP',
+      'Already watched',
+    );
     const firstBlock = blocks[0] as any;
     expect(firstBlock.text.text).toContain('Reason: Already watched');
   });
@@ -367,7 +384,13 @@ describe('buildMyRequestsMessage', () => {
 
   it('returns header + divider + item blocks for requests', () => {
     const requests: MyRequestItem[] = [
-      { type: 'movie', title: 'The Batman', year: 2022, status: 'approved', createdAt: '2024-01-15T10:30:00' },
+      {
+        type: 'movie',
+        title: 'The Batman',
+        year: 2022,
+        status: 'approved',
+        createdAt: '2024-01-15T10:30:00',
+      },
     ];
     const blocks = buildMyRequestsMessage(requests);
     expect(blocks).toHaveLength(3); // header + divider + 1 item
@@ -378,7 +401,13 @@ describe('buildMyRequestsMessage', () => {
 
   it('shows movie emoji for movie requests', () => {
     const blocks = buildMyRequestsMessage([
-      { type: 'movie', title: 'Dune', year: 2021, status: 'pending', createdAt: '2024-01-15T10:30:00' },
+      {
+        type: 'movie',
+        title: 'Dune',
+        year: 2021,
+        status: 'pending',
+        createdAt: '2024-01-15T10:30:00',
+      },
     ]);
     const itemBlock = blocks[2] as any;
     expect(itemBlock.text.text).toContain(':clapper:');
@@ -386,7 +415,13 @@ describe('buildMyRequestsMessage', () => {
 
   it('shows TV emoji for tv requests', () => {
     const blocks = buildMyRequestsMessage([
-      { type: 'tv', title: 'Breaking Bad', year: 2008, status: 'approved', createdAt: '2024-01-15T10:30:00' },
+      {
+        type: 'tv',
+        title: 'Breaking Bad',
+        year: 2008,
+        status: 'approved',
+        createdAt: '2024-01-15T10:30:00',
+      },
     ]);
     const itemBlock = blocks[2] as any;
     expect(itemBlock.text.text).toContain(':tv:');
@@ -413,7 +448,13 @@ describe('buildMyRequestsMessage', () => {
 
   it('includes title, year, and date in item text', () => {
     const blocks = buildMyRequestsMessage([
-      { type: 'movie', title: 'Inception', year: 2010, status: 'approved', createdAt: '2024-03-20T14:00:00' },
+      {
+        type: 'movie',
+        title: 'Inception',
+        year: 2010,
+        status: 'approved',
+        createdAt: '2024-03-20T14:00:00',
+      },
     ]);
     const itemBlock = blocks[2] as any;
     expect(itemBlock.text.text).toContain('Inception');
@@ -423,9 +464,27 @@ describe('buildMyRequestsMessage', () => {
 
   it('shows correct count in header', () => {
     const requests: MyRequestItem[] = [
-      { type: 'movie', title: 'Movie 1', year: 2020, status: 'pending', createdAt: '2024-01-01T00:00:00' },
-      { type: 'tv', title: 'Show 1', year: 2021, status: 'approved', createdAt: '2024-01-02T00:00:00' },
-      { type: 'movie', title: 'Movie 2', year: 2022, status: 'rejected', createdAt: '2024-01-03T00:00:00' },
+      {
+        type: 'movie',
+        title: 'Movie 1',
+        year: 2020,
+        status: 'pending',
+        createdAt: '2024-01-01T00:00:00',
+      },
+      {
+        type: 'tv',
+        title: 'Show 1',
+        year: 2021,
+        status: 'approved',
+        createdAt: '2024-01-02T00:00:00',
+      },
+      {
+        type: 'movie',
+        title: 'Movie 2',
+        year: 2022,
+        status: 'rejected',
+        createdAt: '2024-01-03T00:00:00',
+      },
     ];
     const blocks = buildMyRequestsMessage(requests);
     expect((blocks[0] as any).text.text).toContain('(3)');
@@ -433,8 +492,20 @@ describe('buildMyRequestsMessage', () => {
 
   it('renders mixed movie and TV requests', () => {
     const requests: MyRequestItem[] = [
-      { type: 'tv', title: 'Breaking Bad', year: 2008, status: 'approved', createdAt: '2024-01-02T00:00:00' },
-      { type: 'movie', title: 'The Batman', year: 2022, status: 'pending', createdAt: '2024-01-01T00:00:00' },
+      {
+        type: 'tv',
+        title: 'Breaking Bad',
+        year: 2008,
+        status: 'approved',
+        createdAt: '2024-01-02T00:00:00',
+      },
+      {
+        type: 'movie',
+        title: 'The Batman',
+        year: 2022,
+        status: 'pending',
+        createdAt: '2024-01-01T00:00:00',
+      },
     ];
     const blocks = buildMyRequestsMessage(requests);
     expect(blocks).toHaveLength(4); // header + divider + 2 items
@@ -457,7 +528,14 @@ describe('buildQueueMessage', () => {
 
   it('returns header + divider + item blocks for requests', () => {
     const items: QueueItem[] = [
-      { type: 'movie', title: 'The Batman', year: 2022, status: 'approved', createdAt: '2024-01-15T10:30:00', requesterId: 'U123' },
+      {
+        type: 'movie',
+        title: 'The Batman',
+        year: 2022,
+        status: 'approved',
+        createdAt: '2024-01-15T10:30:00',
+        requesterId: 'U123',
+      },
     ];
     const blocks = buildQueueMessage(items);
     expect(blocks).toHaveLength(3);
@@ -468,7 +546,14 @@ describe('buildQueueMessage', () => {
 
   it('items include requester mention', () => {
     const items: QueueItem[] = [
-      { type: 'movie', title: 'Dune', year: 2021, status: 'pending', createdAt: '2024-01-15T10:30:00', requesterId: 'U_REQ_123' },
+      {
+        type: 'movie',
+        title: 'Dune',
+        year: 2021,
+        status: 'pending',
+        createdAt: '2024-01-15T10:30:00',
+        requesterId: 'U_REQ_123',
+      },
     ];
     const blocks = buildQueueMessage(items);
     const itemBlock = blocks[2] as any;
@@ -477,7 +562,14 @@ describe('buildQueueMessage', () => {
 
   it('shows movie emoji for movie items', () => {
     const items: QueueItem[] = [
-      { type: 'movie', title: 'Inception', year: 2010, status: 'pending', createdAt: '2024-01-15T10:30:00', requesterId: 'U1' },
+      {
+        type: 'movie',
+        title: 'Inception',
+        year: 2010,
+        status: 'pending',
+        createdAt: '2024-01-15T10:30:00',
+        requesterId: 'U1',
+      },
     ];
     const blocks = buildQueueMessage(items);
     const itemBlock = blocks[2] as any;
@@ -486,7 +578,14 @@ describe('buildQueueMessage', () => {
 
   it('shows TV emoji for tv items', () => {
     const items: QueueItem[] = [
-      { type: 'tv', title: 'Breaking Bad', year: 2008, status: 'pending', createdAt: '2024-01-15T10:30:00', requesterId: 'U1' },
+      {
+        type: 'tv',
+        title: 'Breaking Bad',
+        year: 2008,
+        status: 'pending',
+        createdAt: '2024-01-15T10:30:00',
+        requesterId: 'U1',
+      },
     ];
     const blocks = buildQueueMessage(items);
     const itemBlock = blocks[2] as any;
@@ -495,7 +594,14 @@ describe('buildQueueMessage', () => {
 
   it('shows statusFilter in header when provided', () => {
     const items: QueueItem[] = [
-      { type: 'movie', title: 'Dune', year: 2021, status: 'pending', createdAt: '2024-01-15T10:30:00', requesterId: 'U1' },
+      {
+        type: 'movie',
+        title: 'Dune',
+        year: 2021,
+        status: 'pending',
+        createdAt: '2024-01-15T10:30:00',
+        requesterId: 'U1',
+      },
     ];
     const blocks = buildQueueMessage(items, 'pending');
     const header = blocks[0] as any;
@@ -504,8 +610,22 @@ describe('buildQueueMessage', () => {
 
   it('shows correct count in header', () => {
     const items: QueueItem[] = [
-      { type: 'movie', title: 'Movie 1', year: 2020, status: 'pending', createdAt: '2024-01-01T00:00:00', requesterId: 'U1' },
-      { type: 'tv', title: 'Show 1', year: 2021, status: 'approved', createdAt: '2024-01-02T00:00:00', requesterId: 'U2' },
+      {
+        type: 'movie',
+        title: 'Movie 1',
+        year: 2020,
+        status: 'pending',
+        createdAt: '2024-01-01T00:00:00',
+        requesterId: 'U1',
+      },
+      {
+        type: 'tv',
+        title: 'Show 1',
+        year: 2021,
+        status: 'approved',
+        createdAt: '2024-01-02T00:00:00',
+        requesterId: 'U2',
+      },
     ];
     const blocks = buildQueueMessage(items);
     expect((blocks[0] as any).text.text).toContain('(2)');

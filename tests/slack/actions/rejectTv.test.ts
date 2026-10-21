@@ -1,13 +1,21 @@
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
 import { registerRejectTvAction } from '../../../src/slack/actions/rejectTv';
-import { _resetDb, getDb, createTvRequest, getTvRequestByTvdbId, updateTvRequestStatus } from '../../../src/db/index';
+import {
+  _resetDb,
+  getDb,
+  createTvRequest,
+  getTvRequestByTvdbId,
+  updateTvRequestStatus,
+} from '../../../src/db/index';
 import { ACTION_IDS } from '../../../src/slack/messages/index';
 import { _setLoggerOutput } from '../../../src/logger';
 
 function createMockApp() {
   const handlers: Record<string, Function> = {};
   return {
-    action: (id: string, handler: Function) => { handlers[id] = handler; },
+    action: (id: string, handler: Function) => {
+      handlers[id] = handler;
+    },
     getHandler: (id: string) => handlers[id],
   };
 }
@@ -15,7 +23,8 @@ function createMockApp() {
 function mockActionPayload(tvdbIdStr: string, userId = 'U_APPROVER') {
   return {
     body: {
-      channel: { id: 'C_APPROVAL' }, message: { ts: '111.222' },
+      channel: { id: 'C_APPROVAL' },
+      message: { ts: '111.222' },
       user: { id: userId },
       actions: [{ action_id: ACTION_IDS.REJECT_TV, value: 'request:1' }],
     },
@@ -72,7 +81,7 @@ describe('rejectTv action', () => {
     await app.getHandler(ACTION_IDS.REJECT_TV)!({ body, ack, respond, client });
 
     expect(respond).toHaveBeenCalledWith(
-      expect.objectContaining({ text: expect.stringContaining('not authorized') })
+      expect.objectContaining({ text: expect.stringContaining('not authorized') }),
     );
     expect(client.chat.postMessage).not.toHaveBeenCalled();
   });
@@ -84,9 +93,13 @@ describe('rejectTv action', () => {
       year: 2008,
       poster_url: null,
       approval_channel_id: 'C_APPROVAL',
-    requester_slack_id: 'U_REQUESTER',
+      requester_slack_id: 'U_REQUESTER',
     });
-    updateTvRequestStatus({ id: req.id, status: 'rejected', approver_slack_id: 'U_OTHER_APPROVER' });
+    updateTvRequestStatus({
+      id: req.id,
+      status: 'rejected',
+      approver_slack_id: 'U_OTHER_APPROVER',
+    });
 
     registerRejectTvAction(app as any, defaultDeps);
     const { body, ack, respond, client } = mockActionPayload('81189');
@@ -114,7 +127,7 @@ describe('rejectTv action', () => {
     await app.getHandler(ACTION_IDS.REJECT_TV)!({ body, ack, respond, client });
 
     expect(client.chat.update).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: 'C_APPROVAL', ts: '111.222' })
+      expect.objectContaining({ channel: 'C_APPROVAL', ts: '111.222' }),
     );
   });
 
@@ -125,7 +138,10 @@ describe('rejectTv action', () => {
     await app.getHandler(ACTION_IDS.REJECT_TV)!({ body, ack, respond, client });
 
     expect(client.chat.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: 'U_REQUESTER', text: expect.stringContaining('rejected') })
+      expect.objectContaining({
+        channel: 'U_REQUESTER',
+        text: expect.stringContaining('rejected'),
+      }),
     );
   });
 });

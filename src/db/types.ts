@@ -1,4 +1,11 @@
-export type RequestStatus = 'pending' | 'submitting' | 'uncertain' | 'approved' | 'rejected' | 'already_exists' | 'failed';
+export type RequestStatus =
+  | 'pending'
+  | 'submitting'
+  | 'uncertain'
+  | 'approved'
+  | 'rejected'
+  | 'already_exists'
+  | 'failed';
 export type Platform = 'slack' | 'discord';
 
 export type MovieRequest = {

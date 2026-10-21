@@ -20,8 +20,7 @@ export function registerApproveTvAction(app: App, deps: ApproveTvDeps): void {
     await ack();
 
     const action = (body as any).actions[0];
-    const requestId = /^request:[1-9]\d*$/.test(action.value)
-      ? Number(action.value.slice(8)) : NaN;
+    const requestId = /^request:[1-9]\d*$/.test(action.value) ? Number(action.value.slice(8)) : NaN;
     const approverId = body.user.id;
 
     if (!deps.approverSlackIds.includes(approverId)) {
@@ -36,11 +35,14 @@ export function registerApproveTvAction(app: App, deps: ApproveTvDeps): void {
 
     try {
       const request = Number.isSafeInteger(requestId) ? getTvRequest(requestId) : null;
-      if (!request || request.platform !== 'slack'
-        || request.approval_channel_id !== deps.approvalChannelId
-        || (body as any).channel?.id !== request.approval_channel_id
-        || !request.slack_message_ts
-        || (body as any).message?.ts !== request.slack_message_ts) {
+      if (
+        !request ||
+        request.platform !== 'slack' ||
+        request.approval_channel_id !== deps.approvalChannelId ||
+        (body as any).channel?.id !== request.approval_channel_id ||
+        !request.slack_message_ts ||
+        (body as any).message?.ts !== request.slack_message_ts
+      ) {
         await respond({
           response_type: 'ephemeral',
           replace_original: false,
@@ -49,9 +51,13 @@ export function registerApproveTvAction(app: App, deps: ApproveTvDeps): void {
         return;
       }
 
-      if (!await approveTvRequest(request, approverId, deps)) return;
+      if (!(await approveTvRequest(request, approverId, deps))) return;
 
-      log.info('TV show approved', { approver: approverId, show: `${request.show_title} (${request.year})`, requestId });
+      log.info('TV show approved', {
+        approver: approverId,
+        show: `${request.show_title} (${request.year})`,
+        requestId,
+      });
 
       if (request.slack_message_ts) {
         await client.chat.update({
@@ -71,7 +77,11 @@ export function registerApproveTvAction(app: App, deps: ApproveTvDeps): void {
         text: `:white_check_mark: Your request for *${request.show_title} (${request.year})* has been approved by <@${approverId}>! Sonarr is on it.`,
       });
     } catch (error) {
-      log.error('Error in approveTv action', { user: approverId, requestId, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in approveTv action', {
+        user: approverId,
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,

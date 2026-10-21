@@ -9,8 +9,9 @@ const log = createLogger('discord-queue-cmd');
 export const queueCommandDef = new SlashCommandBuilder()
   .setName('queue')
   .setDescription('View the server request queue')
-  .addStringOption(option =>
-    option.setName('status')
+  .addStringOption((option) =>
+    option
+      .setName('status')
       .setDescription('Filter by request status')
       .setRequired(false)
       .addChoices(
@@ -18,8 +19,8 @@ export const queueCommandDef = new SlashCommandBuilder()
         { name: 'Approved', value: 'approved' },
         { name: 'Rejected', value: 'rejected' },
         { name: 'Already Exists', value: 'already_exists' },
-        { name: 'Failed', value: 'failed' }
-      )
+        { name: 'Failed', value: 'failed' },
+      ),
   );
 
 export async function executeQueueCommand(interaction: ChatInputCommandInteraction) {
@@ -35,7 +36,7 @@ export async function executeQueueCommand(interaction: ChatInputCommandInteracti
     const tvRequests = getAllTvRequests(statusFilter ?? undefined, 'discord');
 
     const allRequests = [...movieRequests, ...tvRequests].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 
     const topRequests = allRequests.slice(0, 25);

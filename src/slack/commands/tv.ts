@@ -2,7 +2,6 @@ import type { App } from '@slack/bolt';
 import type { SonarrClient } from '../../sonarr/client';
 import { buildTvSearchResultsMessage } from '../messages/index';
 import { storeTvResults } from '../../core/searchCache';
-import { submitTvForApproval } from '../../core/helpers/submitForApproval';
 import { createLogger } from '../../logger';
 
 type TvCommandDeps = {
@@ -13,7 +12,7 @@ type TvCommandDeps = {
 const log = createLogger('tv-cmd');
 
 export function registerTvCommand(app: App, deps: TvCommandDeps | null): void {
-  app.command('/tv', async ({ command, ack, respond, client }) => {
+  app.command('/tv', async ({ command, ack, respond }) => {
     await ack();
 
     if (!deps) {
@@ -61,7 +60,10 @@ export function registerTvCommand(app: App, deps: TvCommandDeps | null): void {
         text: `Search results for: ${query}`,
       });
     } catch (error) {
-      log.error('Error in /tv command', { user: command.user_id, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in /tv command', {
+        user: command.user_id,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await respond({
         response_type: 'ephemeral',
         text: ':x: Failed to search for TV shows. Please try again.',

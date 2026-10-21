@@ -19,37 +19,49 @@ async function main(): Promise<void> {
 
   const radarrClient = new RadarrClient(config.radarr.url, config.radarr.apiKey);
 
-  _setSecrets([
-    config.radarr.apiKey,
-    config.sonarr?.apiKey,
-    config.slack?.botToken,
-    config.slack?.appToken,
-    config.discord?.botToken,
-  ].filter((s): s is string => !!s));
+  _setSecrets(
+    [
+      config.radarr.apiKey,
+      config.sonarr?.apiKey,
+      config.slack?.botToken,
+      config.slack?.appToken,
+      config.discord?.botToken,
+    ].filter((s): s is string => !!s),
+  );
 
   log.info('🔍 Checking Radarr connection...');
   try {
     const profiles = await radarrClient.getQualityProfiles();
-    log.info(`✅ Radarr connected. Quality profiles: ${profiles.map(p => `${p.name} (${p.id})`).join(', ')}`);
+    log.info(
+      `✅ Radarr connected. Quality profiles: ${profiles.map((p) => `${p.name} (${p.id})`).join(', ')}`,
+    );
     const folders = await radarrClient.getRootFolders();
-    log.info(`📁 Root folders: ${folders.map(f => f.path).join(', ')}`);
+    log.info(`📁 Root folders: ${folders.map((f) => f.path).join(', ')}`);
   } catch (error) {
     log.warn(`⚠️  Could not connect to Radarr: ${error instanceof Error ? error.message : error}`);
     log.warn('   Bot will start anyway. Radarr features will fail until connection is restored.');
   }
 
-  let sonarrConfig: { sonarrClient: SonarrClient; qualityProfileId: number; rootFolderPath: string } | null = null;
+  let sonarrConfig: {
+    sonarrClient: SonarrClient;
+    qualityProfileId: number;
+    rootFolderPath: string;
+  } | null = null;
   if (config.sonarr) {
     const sonarrClient = new SonarrClient(config.sonarr.url, config.sonarr.apiKey);
 
     log.info('🔍 Checking Sonarr connection...');
     try {
       const profiles = await sonarrClient.getQualityProfiles();
-      log.info(`✅ Sonarr connected. Quality profiles: ${profiles.map(p => `${p.name} (${p.id})`).join(', ')}`);
+      log.info(
+        `✅ Sonarr connected. Quality profiles: ${profiles.map((p) => `${p.name} (${p.id})`).join(', ')}`,
+      );
       const folders = await sonarrClient.getRootFolders();
-      log.info(`📁 Root folders: ${folders.map(f => f.path).join(', ')}`);
+      log.info(`📁 Root folders: ${folders.map((f) => f.path).join(', ')}`);
     } catch (error) {
-      log.warn(`⚠️  Could not connect to Sonarr: ${error instanceof Error ? error.message : error}`);
+      log.warn(
+        `⚠️  Could not connect to Sonarr: ${error instanceof Error ? error.message : error}`,
+      );
       log.warn('   Bot will start anyway. Sonarr features will fail until connection is restored.');
     }
 
@@ -68,18 +80,21 @@ async function main(): Promise<void> {
 
   let slackApp: ReturnType<typeof createSlackApp> | null = null;
   let discordApp: any = null; // Will type properly when initializing
-  
+
   if (config.slack) {
-    slackApp = createSlackApp({
-      requestChannelId: config.slack.requestChannelId,
-      botToken: config.slack.botToken,
-      appToken: config.slack.appToken,
-      approvalChannelId: config.slack.approvalChannelId,
-      approverSlackIds: config.slack.approverSlackIds,
-      qualityProfileId: config.radarr.qualityProfileId,
-      rootFolderPath: config.radarr.rootFolderPath,
-      sonarr: sonarrConfig,
-    }, radarrClient);
+    slackApp = createSlackApp(
+      {
+        requestChannelId: config.slack.requestChannelId,
+        botToken: config.slack.botToken,
+        appToken: config.slack.appToken,
+        approvalChannelId: config.slack.approvalChannelId,
+        approverSlackIds: config.slack.approverSlackIds,
+        qualityProfileId: config.radarr.qualityProfileId,
+        rootFolderPath: config.radarr.rootFolderPath,
+        sonarr: sonarrConfig,
+      },
+      radarrClient,
+    );
 
     await slackApp.start();
     log.info('💬 Slack bot started successfully.');
@@ -91,17 +106,20 @@ async function main(): Promise<void> {
     // TODO: Initialize Discord bot here
     log.info('🎮 Discord credentials provided. Starting Discord bot...');
     const { createDiscordApp } = await import('./discord/index');
-    discordApp = await createDiscordApp({
-      botToken: config.discord.botToken,
-      clientId: config.discord.clientId,
-      guildId: config.discord.guildId,
-      requestChannelId: config.discord.requestChannelId,
-      approvalChannelId: config.discord.approvalChannelId,
-      approverDiscordIds: config.discord.approverDiscordIds,
-      qualityProfileId: config.radarr.qualityProfileId,
-      rootFolderPath: config.radarr.rootFolderPath,
-      sonarr: sonarrConfig,
-    }, radarrClient);
+    discordApp = await createDiscordApp(
+      {
+        botToken: config.discord.botToken,
+        clientId: config.discord.clientId,
+        guildId: config.discord.guildId,
+        requestChannelId: config.discord.requestChannelId,
+        approvalChannelId: config.discord.approvalChannelId,
+        approverDiscordIds: config.discord.approverDiscordIds,
+        qualityProfileId: config.radarr.qualityProfileId,
+        rootFolderPath: config.radarr.rootFolderPath,
+        sonarr: sonarrConfig,
+      },
+      radarrClient,
+    );
 
     await discordApp.login(config.discord.botToken);
     log.info('🎮 Discord bot started successfully.');

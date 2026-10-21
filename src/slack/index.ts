@@ -13,20 +13,23 @@ import { registerRejectTvAction } from './actions/rejectTv';
 import { registerMyRequestsCommand } from './commands/myrequests';
 import { registerQueueCommand } from './commands/queue';
 
-export function createSlackApp(config: {
-  requestChannelId: string;
-  botToken: string;
-  appToken: string;
-  approvalChannelId: string;
-  approverSlackIds: string[];
-  qualityProfileId: number;
-  rootFolderPath: string;
-  sonarr: {
-    sonarrClient: SonarrClient;
+export function createSlackApp(
+  config: {
+    requestChannelId: string;
+    botToken: string;
+    appToken: string;
+    approvalChannelId: string;
+    approverSlackIds: string[];
     qualityProfileId: number;
     rootFolderPath: string;
-  } | null;
-}, radarrClient: RadarrClient): App {
+    sonarr: {
+      sonarrClient: SonarrClient;
+      qualityProfileId: number;
+      rootFolderPath: string;
+    } | null;
+  },
+  radarrClient: RadarrClient,
+): App {
   const app = new App({
     token: config.botToken,
     appToken: config.appToken,
@@ -50,31 +53,36 @@ export function createSlackApp(config: {
   });
 
   // TV show handlers — always register /tv command (shows "not configured" if sonarr is null)
-  registerTvCommand(app, config.sonarr ? {
-    sonarrClient: config.sonarr.sonarrClient,
-    approvalChannelId: config.approvalChannelId,
-  } : null);
+  registerTvCommand(
+    app,
+    config.sonarr
+      ? {
+          sonarrClient: config.sonarr.sonarrClient,
+          approvalChannelId: config.approvalChannelId,
+        }
+      : null,
+  );
 
-   if (config.sonarr) {
-     registerSelectTvAction(app, {
-       sonarrClient: config.sonarr.sonarrClient,
-       approvalChannelId: config.approvalChannelId,
-     });
-     registerApproveTvAction(app, {
-       sonarrClient: config.sonarr.sonarrClient,
-       approverSlackIds: config.approverSlackIds,
-       approvalChannelId: config.approvalChannelId,
-       qualityProfileId: config.sonarr.qualityProfileId,
-       rootFolderPath: config.sonarr.rootFolderPath,
-     });
-     registerRejectTvAction(app, {
-       approverSlackIds: config.approverSlackIds,
-       approvalChannelId: config.approvalChannelId,
-     });
-   }
+  if (config.sonarr) {
+    registerSelectTvAction(app, {
+      sonarrClient: config.sonarr.sonarrClient,
+      approvalChannelId: config.approvalChannelId,
+    });
+    registerApproveTvAction(app, {
+      sonarrClient: config.sonarr.sonarrClient,
+      approverSlackIds: config.approverSlackIds,
+      approvalChannelId: config.approvalChannelId,
+      qualityProfileId: config.sonarr.qualityProfileId,
+      rootFolderPath: config.sonarr.rootFolderPath,
+    });
+    registerRejectTvAction(app, {
+      approverSlackIds: config.approverSlackIds,
+      approvalChannelId: config.approvalChannelId,
+    });
+  }
 
-   registerMyRequestsCommand(app);
-   registerQueueCommand(app);
+  registerMyRequestsCommand(app);
+  registerQueueCommand(app);
 
-   return app;
+  return app;
 }

@@ -1,7 +1,6 @@
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
 import { registerTvCommand } from '../../../src/slack/commands/tv';
 import { getTvResults } from '../../../src/core/searchCache';
-import { _resetDb, getDb } from '../../../src/db/index';
 import { _setLoggerOutput } from '../../../src/logger';
 
 function createMockApp() {
@@ -59,7 +58,10 @@ describe('/tv command', () => {
     _setLoggerOutput({ debug: () => {}, info: () => {}, warn: () => {}, error: () => {} });
     app = createMockApp();
     sonarrClient = createMockSonarrClient(mockShowResults);
-    registerTvCommand(app as any, { sonarrClient: sonarrClient as any, approvalChannelId: 'C_APPROVAL' });
+    registerTvCommand(app as any, {
+      sonarrClient: sonarrClient as any,
+      approvalChannelId: 'C_APPROVAL',
+    });
   });
 
   it('calls ack() immediately', async () => {
@@ -75,7 +77,7 @@ describe('/tv command', () => {
     await handler!({ command, ack, respond });
 
     expect(respond).toHaveBeenCalledWith(
-      expect.objectContaining({ text: expect.stringContaining('Usage:') })
+      expect.objectContaining({ text: expect.stringContaining('Usage:') }),
     );
     expect(sonarrClient.searchSeries).not.toHaveBeenCalled();
   });
@@ -111,7 +113,10 @@ describe('/tv command', () => {
 
   it('responds with no-results message when Sonarr returns empty', async () => {
     const emptyClient = createMockSonarrClient([]);
-    registerTvCommand(app as any, { sonarrClient: emptyClient as any, approvalChannelId: 'C_APPROVAL' });
+    registerTvCommand(app as any, {
+      sonarrClient: emptyClient as any,
+      approvalChannelId: 'C_APPROVAL',
+    });
 
     const { command, ack, respond } = mockCommandPayload('xyznotatvshow');
     const handler = app.getHandler('/tv');
@@ -124,9 +129,14 @@ describe('/tv command', () => {
 
   it('responds with error message on Sonarr failure', async () => {
     const failingClient = {
-      searchSeries: mock(async () => { throw new Error('Connection refused'); }),
+      searchSeries: mock(async () => {
+        throw new Error('Connection refused');
+      }),
     };
-    registerTvCommand(app as any, { sonarrClient: failingClient as any, approvalChannelId: 'C_APPROVAL' });
+    registerTvCommand(app as any, {
+      sonarrClient: failingClient as any,
+      approvalChannelId: 'C_APPROVAL',
+    });
 
     const { command, ack, respond } = mockCommandPayload('breaking bad');
     const handler = app.getHandler('/tv');
@@ -145,7 +155,7 @@ describe('/tv command', () => {
     await handler!({ command, ack, respond });
 
     expect(respond).toHaveBeenCalledWith(
-      expect.objectContaining({ text: expect.stringContaining('not configured') })
+      expect.objectContaining({ text: expect.stringContaining('not configured') }),
     );
   });
 });

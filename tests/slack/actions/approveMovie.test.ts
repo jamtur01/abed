@@ -1,13 +1,21 @@
 import { describe, it, expect, mock, beforeEach } from 'bun:test';
 import { registerApproveMovieAction } from '../../../src/slack/actions/approveMovie';
-import { _resetDb, getDb, createRequest, getRequestByTmdbId, updateRequestStatus } from '../../../src/db/index';
+import {
+  _resetDb,
+  getDb,
+  createRequest,
+  getRequestByTmdbId,
+  updateRequestStatus,
+} from '../../../src/db/index';
 import { ACTION_IDS } from '../../../src/slack/messages/index';
 import { _setLoggerOutput } from '../../../src/logger';
 
 function createMockApp() {
   const handlers: Record<string, Function> = {};
   return {
-    action: (id: string, handler: Function) => { handlers[id] = handler; },
+    action: (id: string, handler: Function) => {
+      handlers[id] = handler;
+    },
     getHandler: (id: string) => handlers[id],
   };
 }
@@ -15,7 +23,8 @@ function createMockApp() {
 function mockActionPayload(tmdbIdStr: string, userId = 'U_APPROVER') {
   return {
     body: {
-      channel: { id: 'C_APPROVAL' }, message: { ts: '111.222' },
+      channel: { id: 'C_APPROVAL' },
+      message: { ts: '111.222' },
       user: { id: userId },
       actions: [{ action_id: ACTION_IDS.APPROVE_MOVIE, value: 'request:1' }],
     },
@@ -45,7 +54,12 @@ function createMockRadarrClient() {
   return {
     searchMovies: mock(async (_: string) => [mockMovieData]),
     addMovie: mock(async (_: any, __: number, ___: string) => ({
-      id: 1, title: 'The Batman', year: 2022, tmdbId: 12345, monitored: true, status: 'released',
+      id: 1,
+      title: 'The Batman',
+      year: 2022,
+      tmdbId: 12345,
+      monitored: true,
+      status: 'released',
     })),
     movieExists: mock(async (_: number) => false),
   };
@@ -98,7 +112,7 @@ describe('approveMovie action', () => {
     await app.getHandler(ACTION_IDS.APPROVE_MOVIE)!({ body, ack, respond, client });
 
     expect(respond).toHaveBeenCalledWith(
-      expect.objectContaining({ text: expect.stringContaining('not authorized') })
+      expect.objectContaining({ text: expect.stringContaining('not authorized') }),
     );
     expect(radarrClient.addMovie).not.toHaveBeenCalled();
   });
@@ -111,7 +125,7 @@ describe('approveMovie action', () => {
       year: 2022,
       poster_url: null,
       approval_channel_id: 'C_APPROVAL',
-    requester_slack_id: 'U_REQUESTER',
+      requester_slack_id: 'U_REQUESTER',
     });
     updateRequestStatus({ id: req.id, status: 'approved', approver_slack_id: 'U_OTHER_APPROVER' });
 
@@ -154,7 +168,7 @@ describe('approveMovie action', () => {
     await app.getHandler(ACTION_IDS.APPROVE_MOVIE)!({ body, ack, respond, client });
 
     expect(client.chat.update).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: 'C_APPROVAL', ts: '111.222' })
+      expect.objectContaining({ channel: 'C_APPROVAL', ts: '111.222' }),
     );
   });
 
@@ -165,17 +179,28 @@ describe('approveMovie action', () => {
     await app.getHandler(ACTION_IDS.APPROVE_MOVIE)!({ body, ack, respond, client });
 
     expect(client.chat.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: 'U_REQUESTER', text: expect.stringContaining('approved') })
+      expect.objectContaining({
+        channel: 'U_REQUESTER',
+        text: expect.stringContaining('approved'),
+      }),
     );
   });
   it('rejects mismatched channel, message, platform and legacy button values', async () => {
     const request = seedPendingRequest();
     registerApproveMovieAction(app as any, { ...defaultDeps, radarrClient: radarrClient as any });
     for (const change of [
-      (p: any) => { p.body.channel.id = 'OTHER'; },
-      (p: any) => { p.body.message.ts = 'other.message'; },
-      (p: any) => { p.body.actions[0].value = '12345'; },
-      () => { getDb().run("UPDATE requests SET platform='discord' WHERE id=?", [request.id]); },
+      (p: any) => {
+        p.body.channel.id = 'OTHER';
+      },
+      (p: any) => {
+        p.body.message.ts = 'other.message';
+      },
+      (p: any) => {
+        p.body.actions[0].value = '12345';
+      },
+      () => {
+        getDb().run("UPDATE requests SET platform='discord' WHERE id=?", [request.id]);
+      },
     ]) {
       const payload = mockActionPayload('12345');
       change(payload);
@@ -194,5 +219,4 @@ describe('approveMovie action', () => {
     expect(getRequestByTmdbId(12345)?.status).toBe('pending');
     expect(radarrClient.addMovie).not.toHaveBeenCalled();
   });
-
 });

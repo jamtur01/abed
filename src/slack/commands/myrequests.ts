@@ -5,7 +5,15 @@ import type { MyRequestItem } from '../messages/index';
 import type { RequestStatus } from '../../db/types';
 import { createLogger } from '../../logger';
 
-const VALID_STATUSES: RequestStatus[] = ['pending', 'submitting', 'uncertain', 'approved', 'rejected', 'already_exists', 'failed'];
+const VALID_STATUSES: RequestStatus[] = [
+  'pending',
+  'submitting',
+  'uncertain',
+  'approved',
+  'rejected',
+  'already_exists',
+  'failed',
+];
 
 const log = createLogger('myrequests-cmd');
 
@@ -66,7 +74,10 @@ export function registerMyRequestsCommand(app: App): void {
         text: 'Your requests',
       });
     } catch (error) {
-      log.error('Error in /myrequests command', { user: userId, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in /myrequests command', {
+        user: userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await respond({
         response_type: 'ephemeral',
         text: ':x: Failed to retrieve your requests. Please try again.',

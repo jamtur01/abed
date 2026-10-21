@@ -56,13 +56,15 @@ export function buildSearchResultsMessage(movies: RadarrSearchResult[]): Block[]
     const section: Block = {
       type: 'section',
       text: { type: 'mrkdwn', text },
-      ...(posterUrl ? {
-        accessory: {
-          type: 'image',
-          image_url: posterUrl,
-          alt_text: `${movie.title} poster`,
-        } satisfies ImageElement,
-      } : {}),
+      ...(posterUrl
+        ? {
+            accessory: {
+              type: 'image',
+              image_url: posterUrl,
+              alt_text: `${movie.title} poster`,
+            } satisfies ImageElement,
+          }
+        : {}),
     };
     blocks.push(section);
 
@@ -83,7 +85,13 @@ export function buildSearchResultsMessage(movies: RadarrSearchResult[]): Block[]
 }
 
 export function buildApprovalRequestMessage(
-  movie: { title: string; year: number; overview?: string; posterUrl?: string | null; tmdbId: number },
+  movie: {
+    title: string;
+    year: number;
+    overview?: string;
+    posterUrl?: string | null;
+    tmdbId: number;
+  },
   requesterSlackId: string,
   requestId: number,
 ): Block[] {
@@ -214,13 +222,15 @@ export function buildTvSearchResultsMessage(shows: SonarrSearchResult[]): Block[
     const section: Block = {
       type: 'section',
       text: { type: 'mrkdwn', text },
-      ...(posterUrl ? {
-        accessory: {
-          type: 'image',
-          image_url: posterUrl,
-          alt_text: `${show.title} poster`,
-        } satisfies ImageElement,
-      } : {}),
+      ...(posterUrl
+        ? {
+            accessory: {
+              type: 'image',
+              image_url: posterUrl,
+              alt_text: `${show.title} poster`,
+            } satisfies ImageElement,
+          }
+        : {}),
     };
     blocks.push(section);
 
@@ -241,7 +251,15 @@ export function buildTvSearchResultsMessage(shows: SonarrSearchResult[]): Block[
 }
 
 export function buildTvApprovalRequestMessage(
-  show: { title: string; year: number; overview?: string; posterUrl?: string | null; tvdbId: number; network?: string; seasonCount: number },
+  show: {
+    title: string;
+    year: number;
+    overview?: string;
+    posterUrl?: string | null;
+    tvdbId: number;
+    network?: string;
+    seasonCount: number;
+  },
   requesterSlackId: string,
   requestId: number,
 ): Block[] {
@@ -357,7 +375,9 @@ export type QueueItem = {
 };
 
 const STATUS_EMOJI: Record<string, string> = {
-  submitting: '⏳', uncertain: '⚠️', pending: '⏳',
+  submitting: '⏳',
+  uncertain: '⚠️',
+  pending: '⏳',
   approved: '✅',
   rejected: '❌',
   already_exists: 'ℹ️',
@@ -365,7 +385,9 @@ const STATUS_EMOJI: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  submitting: 'Submitting', uncertain: 'Uncertain — click Approve to check Arr', pending: 'Pending',
+  submitting: 'Submitting',
+  uncertain: 'Uncertain — click Approve to check Arr',
+  pending: 'Pending',
   approved: 'Approved',
   rejected: 'Rejected',
   already_exists: 'Already in library',

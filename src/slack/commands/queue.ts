@@ -5,7 +5,15 @@ import type { QueueItem } from '../messages/index';
 import type { RequestStatus } from '../../db/types';
 import { createLogger } from '../../logger';
 
-const VALID_STATUSES: RequestStatus[] = ['pending', 'submitting', 'uncertain', 'approved', 'rejected', 'already_exists', 'failed'];
+const VALID_STATUSES: RequestStatus[] = [
+  'pending',
+  'submitting',
+  'uncertain',
+  'approved',
+  'rejected',
+  'already_exists',
+  'failed',
+];
 
 const log = createLogger('queue-cmd');
 
@@ -64,7 +72,10 @@ export function registerQueueCommand(app: App): void {
         text: 'Request queue',
       });
     } catch (error) {
-      log.error('Error in /queue command', { user: userId, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in /queue command', {
+        user: userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await respond({
         response_type: 'ephemeral',
         text: ':x: Failed to retrieve the request queue. Please try again.',

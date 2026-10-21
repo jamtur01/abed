@@ -1,9 +1,4 @@
-import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder,
-} from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import type { RadarrSearchResult } from '../../radarr/types';
 import type { SonarrSearchResult } from '../../sonarr/types';
 import type { MovieRequest, TvRequest } from '../../db/types';
@@ -13,14 +8,18 @@ import { getMoviePosterUrl, getTvPosterUrl } from '../../core/helpers/posterUrl'
 // MOVIE MESSAGES
 // ============================================================================
 
-export function buildApprovalRequestEmbed(movie: RadarrSearchResult, requesterDiscordId: string, requestId: number) {
+export function buildApprovalRequestEmbed(
+  movie: RadarrSearchResult,
+  requesterDiscordId: string,
+  requestId: number,
+) {
   const embed = new EmbedBuilder()
     .setColor('#ffcc00')
     .setTitle(`Movie Request: ${movie.title} (${movie.year})`)
     .setDescription(`Requested by <@${requesterDiscordId}>`)
     .addFields(
       { name: 'TMDB ID', value: movie.tmdbId.toString(), inline: true },
-      { name: 'Status', value: 'Pending Approval ⏳', inline: true }
+      { name: 'Status', value: 'Pending Approval ⏳', inline: true },
     );
 
   if (movie.overview) {
@@ -56,7 +55,7 @@ export function buildApprovedEmbed(movie: MovieRequest, approverDiscordId: strin
     .setDescription(`Requested by <@${movie.requester_slack_id}>`)
     .addFields(
       { name: 'TMDB ID', value: movie.tmdb_id.toString(), inline: true },
-      { name: 'Status', value: `Approved by <@${approverDiscordId}> ✅`, inline: true }
+      { name: 'Status', value: `Approved by <@${approverDiscordId}> ✅`, inline: true },
     );
 
   if (movie.poster_url) embed.setThumbnail(movie.poster_url);
@@ -71,7 +70,7 @@ export function buildRejectedEmbed(movie: MovieRequest, approverDiscordId: strin
     .setDescription(`Requested by <@${movie.requester_slack_id}>`)
     .addFields(
       { name: 'TMDB ID', value: movie.tmdb_id.toString(), inline: true },
-      { name: 'Status', value: `Rejected by <@${approverDiscordId}> ❌`, inline: true }
+      { name: 'Status', value: `Rejected by <@${approverDiscordId}> ❌`, inline: true },
     );
 
   if (movie.poster_url) embed.setThumbnail(movie.poster_url);
@@ -83,7 +82,11 @@ export function buildRejectedEmbed(movie: MovieRequest, approverDiscordId: strin
 // TV MESSAGES
 // ============================================================================
 
-export function buildTvApprovalRequestEmbed(show: SonarrSearchResult, requesterDiscordId: string, requestId: number) {
+export function buildTvApprovalRequestEmbed(
+  show: SonarrSearchResult,
+  requesterDiscordId: string,
+  requestId: number,
+) {
   const embed = new EmbedBuilder()
     .setColor('#ffcc00')
     .setTitle(`TV Request: ${show.title} (${show.year})`)
@@ -92,7 +95,7 @@ export function buildTvApprovalRequestEmbed(show: SonarrSearchResult, requesterD
       { name: 'Network', value: show.network || 'Unknown', inline: true },
       { name: 'Seasons', value: (show.seasons?.length || 0).toString(), inline: true },
       { name: 'TVDB ID', value: show.tvdbId.toString(), inline: true },
-      { name: 'Status', value: 'Pending Approval ⏳', inline: true }
+      { name: 'Status', value: 'Pending Approval ⏳', inline: true },
     );
 
   if (show.overview) {
@@ -129,7 +132,7 @@ export function buildTvApprovedEmbed(show: TvRequest, approverDiscordId: string)
     .setDescription(`Requested by <@${show.requester_slack_id}>`)
     .addFields(
       { name: 'TVDB ID', value: show.tvdb_id.toString(), inline: true },
-      { name: 'Status', value: `Approved by <@${approverDiscordId}> ✅`, inline: true }
+      { name: 'Status', value: `Approved by <@${approverDiscordId}> ✅`, inline: true },
     );
 
   if (show.poster_url) embed.setThumbnail(show.poster_url);
@@ -144,7 +147,7 @@ export function buildTvRejectedEmbed(show: TvRequest, approverDiscordId: string)
     .setDescription(`Requested by <@${show.requester_slack_id}>`)
     .addFields(
       { name: 'TVDB ID', value: show.tvdb_id.toString(), inline: true },
-      { name: 'Status', value: `Rejected by <@${approverDiscordId}> ❌`, inline: true }
+      { name: 'Status', value: `Rejected by <@${approverDiscordId}> ❌`, inline: true },
     );
 
   if (show.poster_url) embed.setThumbnail(show.poster_url);
@@ -158,7 +161,7 @@ export function buildTvRejectedEmbed(show: TvRequest, approverDiscordId: string)
 
 export function buildMovieCarouselPage(
   results: RadarrSearchResult[],
-  currentIndex: number
+  currentIndex: number,
 ): { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] } {
   if (results.length === 0) {
     return {
@@ -179,7 +182,7 @@ export function buildMovieCarouselPage(
     .setDescription(movie.overview?.substring(0, 1024) ?? 'No overview available.')
     .addFields(
       { name: 'Studio', value: movie.studio ?? 'Unknown', inline: true },
-      { name: 'TMDB ID', value: movie.tmdbId.toString(), inline: true }
+      { name: 'TMDB ID', value: movie.tmdbId.toString(), inline: true },
     )
     .setFooter({ text: `Result ${currentIndex + 1} of ${results.length}` });
 
@@ -212,7 +215,7 @@ export function buildMovieCarouselPage(
 
 export function buildTvCarouselPage(
   results: SonarrSearchResult[],
-  currentIndex: number
+  currentIndex: number,
 ): { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] } {
   if (results.length === 0) {
     return {
@@ -235,7 +238,7 @@ export function buildTvCarouselPage(
     .addFields(
       { name: 'Network', value: show.network ?? 'Unknown', inline: true },
       { name: 'Seasons', value: seasonCount.toString(), inline: true },
-      { name: 'TVDB ID', value: show.tvdbId.toString(), inline: true }
+      { name: 'TVDB ID', value: show.tvdbId.toString(), inline: true },
     )
     .setFooter({ text: `Result ${currentIndex + 1} of ${results.length}` });
 
@@ -290,7 +293,7 @@ export function buildMyRequestsEmbed(requests: (MovieRequest | TvRequest)[]) {
     const isMovie = 'movie_title' in req;
     const title = isMovie ? req.movie_title : req.show_title;
     const icon = isMovie ? '🎬' : '📺';
-    
+
     let statusIcon = '⏳';
     if (req.status === 'approved') statusIcon = '✅';
     if (req.status === 'rejected') statusIcon = '❌';
@@ -312,9 +315,7 @@ export function buildQueueEmbed(requests: (MovieRequest | TvRequest)[], statusFi
     const filterNote = statusFilter ? ` with status **${statusFilter}**` : '';
     return {
       embeds: [
-        new EmbedBuilder()
-          .setColor('#cccccc')
-          .setDescription(`No requests found${filterNote}.`),
+        new EmbedBuilder().setColor('#cccccc').setDescription(`No requests found${filterNote}.`),
       ],
     };
   }

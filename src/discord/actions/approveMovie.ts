@@ -14,7 +14,7 @@ export async function handleApproveMovie(
     approverDiscordIds: string[];
     qualityProfileId: number;
     rootFolderPath: string;
-  }
+  },
 ) {
   const userId = interaction.user.id;
   const value = interaction.customId.replace('approve_movie_request_', '');
@@ -32,9 +32,14 @@ export async function handleApproveMovie(
   }
 
   const request = Number.isSafeInteger(requestId) ? getRequest(requestId) : null;
-  if (!request || request.platform !== 'discord'
-    || !request.approval_channel_id || interaction.channelId !== request.approval_channel_id
-    || !request.slack_message_ts || interaction.message.id !== request.slack_message_ts) {
+  if (
+    !request ||
+    request.platform !== 'discord' ||
+    !request.approval_channel_id ||
+    interaction.channelId !== request.approval_channel_id ||
+    !request.slack_message_ts ||
+    interaction.message.id !== request.slack_message_ts
+  ) {
     log.warn('Request not found in DB', { requestId });
     await interaction.reply({
       content: '❌ Request not found in database.',
@@ -46,7 +51,10 @@ export async function handleApproveMovie(
   const tmdbId = request.tmdb_id;
   await interaction.deferUpdate();
   try {
-    if (!await approveMovieRequest(request, userId, { ...deps, radarrClient: deps.radarrClient! })) return;
+    if (
+      !(await approveMovieRequest(request, userId, { ...deps, radarrClient: deps.radarrClient! }))
+    )
+      return;
     const updatedRequest = getRequest(request.id)!;
 
     log.info('Movie added to Radarr', { tmdbId });
@@ -57,12 +65,20 @@ export async function handleApproveMovie(
     // DM requester
     try {
       const requester = await interaction.client.users.fetch(request.requester_slack_id);
-      await requester.send(`✅ Your request for **${request.movie_title}** has been approved and added to Radarr!`);
+      await requester.send(
+        `✅ Your request for **${request.movie_title}** has been approved and added to Radarr!`,
+      );
     } catch (e) {
-      log.warn('Failed to DM requester', { requesterId: request.requester_slack_id, error: e instanceof Error ? e.message : String(e) });
+      log.warn('Failed to DM requester', {
+        requesterId: request.requester_slack_id,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   } catch (error) {
-    log.error('Failed to approve movie', { tmdbId, error: error instanceof Error ? error.message : String(error) });
+    log.error('Failed to approve movie', {
+      tmdbId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     // Can't edit reply cleanly here if we deferred update, so just log it or followup
     await interaction.followUp({
       content: `❌ Failed to add movie to Radarr: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -73,7 +89,7 @@ export async function handleApproveMovie(
 
 export async function handleRejectMovie(
   interaction: ButtonInteraction,
-  deps: { approverDiscordIds: string[] }
+  deps: { approverDiscordIds: string[] },
 ) {
   const userId = interaction.user.id;
   const value = interaction.customId.replace('reject_movie_request_', '');
@@ -91,9 +107,14 @@ export async function handleRejectMovie(
   }
 
   const request = Number.isSafeInteger(requestId) ? getRequest(requestId) : null;
-  if (!request || request.platform !== 'discord'
-    || !request.approval_channel_id || interaction.channelId !== request.approval_channel_id
-    || !request.slack_message_ts || interaction.message.id !== request.slack_message_ts) {
+  if (
+    !request ||
+    request.platform !== 'discord' ||
+    !request.approval_channel_id ||
+    interaction.channelId !== request.approval_channel_id ||
+    !request.slack_message_ts ||
+    interaction.message.id !== request.slack_message_ts
+  ) {
     log.warn('Request not found in DB', { requestId });
     await interaction.reply({
       content: '❌ Request not found in database.',
@@ -116,9 +137,15 @@ export async function handleRejectMovie(
       const requester = await interaction.client.users.fetch(request.requester_slack_id);
       await requester.send(`❌ Your request for **${request.movie_title}** was rejected.`);
     } catch (e) {
-      log.warn('Failed to DM requester', { requesterId: request.requester_slack_id, error: e instanceof Error ? e.message : String(e) });
+      log.warn('Failed to DM requester', {
+        requesterId: request.requester_slack_id,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   } catch (error) {
-    log.error('Failed to reject movie', { tmdbId, error: error instanceof Error ? error.message : String(error) });
+    log.error('Failed to reject movie', {
+      tmdbId,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }

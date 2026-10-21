@@ -16,8 +16,7 @@ export function registerRejectMovieAction(app: App, deps: RejectMovieDeps): void
     await ack();
 
     const action = (body as any).actions[0];
-    const requestId = /^request:[1-9]\d*$/.test(action.value)
-      ? Number(action.value.slice(8)) : NaN;
+    const requestId = /^request:[1-9]\d*$/.test(action.value) ? Number(action.value.slice(8)) : NaN;
     const approverId = body.user.id;
 
     if (!deps.approverSlackIds.includes(approverId)) {
@@ -32,11 +31,14 @@ export function registerRejectMovieAction(app: App, deps: RejectMovieDeps): void
 
     try {
       const request = Number.isSafeInteger(requestId) ? getRequest(requestId) : null;
-      if (!request || request.platform !== 'slack'
-        || request.approval_channel_id !== deps.approvalChannelId
-        || (body as any).channel?.id !== request.approval_channel_id
-        || !request.slack_message_ts
-        || (body as any).message?.ts !== request.slack_message_ts) {
+      if (
+        !request ||
+        request.platform !== 'slack' ||
+        request.approval_channel_id !== deps.approvalChannelId ||
+        (body as any).channel?.id !== request.approval_channel_id ||
+        !request.slack_message_ts ||
+        (body as any).message?.ts !== request.slack_message_ts
+      ) {
         await respond({
           response_type: 'ephemeral',
           replace_original: false,
@@ -47,7 +49,11 @@ export function registerRejectMovieAction(app: App, deps: RejectMovieDeps): void
 
       if (!transition('movie', request.id, 'pending', 'rejected', approverId)) return;
 
-      log.info('Movie rejected', { approver: approverId, movie: `${request.movie_title} (${request.year})`, requestId });
+      log.info('Movie rejected', {
+        approver: approverId,
+        movie: `${request.movie_title} (${request.year})`,
+        requestId,
+      });
 
       if (request.slack_message_ts) {
         await client.chat.update({
@@ -67,7 +73,11 @@ export function registerRejectMovieAction(app: App, deps: RejectMovieDeps): void
         text: `:x: Your request for *${request.movie_title} (${request.year})* has been rejected by <@${approverId}>.`,
       });
     } catch (error) {
-      log.error('Error in rejectMovie action', { user: approverId, requestId, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in rejectMovie action', {
+        user: approverId,
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,

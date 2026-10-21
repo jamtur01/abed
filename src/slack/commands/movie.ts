@@ -72,10 +72,16 @@ export function registerMovieCommand(app: App, deps: MovieCommandDeps): void {
           text: `:white_check_mark: Your request for *${movie.title} (${movie.year})* has been submitted for approval!`,
         });
       } catch (error) {
-        log.error('Error in /movie command (IMDB path)', { user: command.user_id, error: error instanceof Error ? error.message : String(error) });
+        log.error('Error in /movie command (IMDB path)', {
+          user: command.user_id,
+          error: error instanceof Error ? error.message : String(error),
+        });
         await respond({
           response_type: 'ephemeral',
-          text: error instanceof SubmissionDenied ? error.message : ':x: Failed to process IMDB link. Please try again.',
+          text:
+            error instanceof SubmissionDenied
+              ? error.message
+              : ':x: Failed to process IMDB link. Please try again.',
         });
       }
       return;
@@ -108,10 +114,16 @@ export function registerMovieCommand(app: App, deps: MovieCommandDeps): void {
         text: `Search results for: ${query}`,
       });
     } catch (error) {
-      log.error('Error in /movie command', { user: command.user_id, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in /movie command', {
+        user: command.user_id,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await respond({
         response_type: 'ephemeral',
-        text: error instanceof SubmissionDenied ? error.message : ':x: Failed to search for movies. Please try again.',
+        text:
+          error instanceof SubmissionDenied
+            ? error.message
+            : ':x: Failed to search for movies. Please try again.',
       });
     }
   });

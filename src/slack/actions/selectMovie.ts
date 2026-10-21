@@ -1,3 +1,4 @@
+import { SubmissionDenied } from '../../core/submission';
 import type { App } from '@slack/bolt';
 import type { RadarrClient } from '../../radarr/client';
 import { getResults, clearResults } from '../../core/searchCache';

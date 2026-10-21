@@ -36,6 +36,10 @@ export function _resetDb(): void {
 
 function initSchema(db: Database): void {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS request_rate_limits (
+      platform TEXT NOT NULL, user_id TEXT NOT NULL, minute INTEGER NOT NULL,
+      count INTEGER NOT NULL, PRIMARY KEY(platform,user_id)
+    );
     CREATE TABLE IF NOT EXISTS requests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       movie_title TEXT NOT NULL,

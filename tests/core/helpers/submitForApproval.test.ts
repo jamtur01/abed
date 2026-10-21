@@ -120,4 +120,17 @@ describe('submitMovieForApproval', () => {
       }),
     ).rejects.toThrow('channel_not_found');
   });
+  it('posts one approval for concurrent repeated submissions and blocks later API work', async () => {
+    const client = createMockClient();
+    const radarrClient = createMockRadarrClient();
+    const params = { movie: mockMovie, userId: 'U_TEST', client,
+      radarrClient: radarrClient as any, approvalChannelId: 'C_APPROVAL' };
+    const results = await Promise.allSettled(Array.from({ length: 5 }, () => submitMovieForApproval(params)));
+    expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
+    expect(client.chat.postMessage).toHaveBeenCalledTimes(1);
+    const calls = radarrClient.movieExists.mock.calls.length;
+    await expect(submitMovieForApproval(params)).rejects.toThrow('active request');
+    expect(radarrClient.movieExists).toHaveBeenCalledTimes(calls);
+  });
+
 });

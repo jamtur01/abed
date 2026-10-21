@@ -1,3 +1,4 @@
+import { SubmissionDenied } from '../../core/submission';
 import type { App } from '@slack/bolt';
 import type { RadarrClient } from '../../radarr/client';
 import { buildSearchResultsMessage } from '../messages/index';
@@ -74,7 +75,7 @@ export function registerMovieCommand(app: App, deps: MovieCommandDeps): void {
         log.error('Error in /movie command (IMDB path)', { user: command.user_id, error: error instanceof Error ? error.message : String(error) });
         await respond({
           response_type: 'ephemeral',
-          text: ':x: Failed to process IMDB link. Please try again.',
+          text: error instanceof SubmissionDenied ? error.message : ':x: Failed to process IMDB link. Please try again.',
         });
       }
       return;
@@ -110,7 +111,7 @@ export function registerMovieCommand(app: App, deps: MovieCommandDeps): void {
       log.error('Error in /movie command', { user: command.user_id, error: error instanceof Error ? error.message : String(error) });
       await respond({
         response_type: 'ephemeral',
-        text: ':x: Failed to search for movies. Please try again.',
+        text: error instanceof SubmissionDenied ? error.message : ':x: Failed to search for movies. Please try again.',
       });
     }
   });

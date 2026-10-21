@@ -1,9 +1,10 @@
+import { reserveMovieRequest, reserveTvRequest, assertCanSubmit, SubmissionDenied } from '../../core/submission';
 import { MessageFlags, TextChannel } from 'discord.js';
 import type { ButtonInteraction } from 'discord.js';
 import type { RadarrClient } from '../../radarr/client';
 import type { SonarrClient } from '../../sonarr/client';
 import { getResults, clearResults, getTvResults, clearTvResults } from '../../core/searchCache';
-import { createRequest, createTvRequest, updateRequestStatus, updateTvRequestStatus } from '../../db/index';
+import { updateRequestStatus, updateTvRequestStatus } from '../../db/index';
 import { buildMovieCarouselPage, buildTvCarouselPage, buildApprovalRequestEmbed, buildTvApprovalRequestEmbed } from '../messages/index';
 import { getMoviePosterUrl, getTvPosterUrl } from '../../core/helpers/posterUrl';
 import { createLogger } from '../../logger';
@@ -118,6 +119,7 @@ export async function handleMovieCarouselRequest(
   await interaction.deferUpdate();
 
   try {
+    assertCanSubmit('movie', 'discord', userId, movie.tmdbId);
     const isDuplicate = await deps.radarrClient.movieExists(movie.tmdbId);
     if (isDuplicate) {
       log.info('Movie already exists', { user: userId, tmdbId: movie.tmdbId });
@@ -135,7 +137,7 @@ export async function handleMovieCarouselRequest(
       throw new Error('Approval channel not found or bot lacks access');
     }
 
-    const request = createRequest({
+    const request = reserveMovieRequest({
       movie_title: movie.title,
       tmdb_id: movie.tmdbId,
       imdb_id: movie.imdbId,
@@ -161,7 +163,7 @@ export async function handleMovieCarouselRequest(
   } catch (error) {
     log.error('Failed to process movie carousel request', { user: userId, error: error instanceof Error ? error.message : String(error) });
     await interaction.followUp({
-      content: '❌ Something went wrong. Please try again.',
+      content: error instanceof SubmissionDenied ? error.message : '❌ Something went wrong. Check /queue before retrying.',
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -212,6 +214,7 @@ export async function handleTvCarouselRequest(
   await interaction.deferUpdate();
 
   try {
+    assertCanSubmit('tv', 'discord', userId, show.tvdbId);
     const isDuplicate = await deps.sonarrClient.seriesExists(show.tvdbId);
     if (isDuplicate) {
       log.info('Show already exists', { user: userId, tvdbId: show.tvdbId });
@@ -228,7 +231,7 @@ export async function handleTvCarouselRequest(
       throw new Error('Approval channel not found or bot lacks access');
     }
 
-    const request = createTvRequest({
+    const request = reserveTvRequest({
       show_title: show.title,
       tvdb_id: show.tvdbId,
       year: show.year,
@@ -253,7 +256,7 @@ export async function handleTvCarouselRequest(
   } catch (error) {
     log.error('Failed to process TV carousel request', { user: userId, error: error instanceof Error ? error.message : String(error) });
     await interaction.followUp({
-      content: '❌ Something went wrong. Please try again.',
+      content: error instanceof SubmissionDenied ? error.message : '❌ Something went wrong. Check /queue before retrying.',
       flags: MessageFlags.Ephemeral,
     });
   }

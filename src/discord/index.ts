@@ -1,3 +1,4 @@
+import { consumeRequestBudget } from '../core/submission';
 import { Client, GatewayIntentBits, REST, Routes, MessageFlags } from 'discord.js';
 import type { Interaction } from 'discord.js';
 import type { RadarrClient } from '../radarr/client';
@@ -79,6 +80,14 @@ export async function createDiscordApp(deps: DiscordAppDeps, radarrClient: Radar
         if (interaction.isRepliable()) await interaction.reply({
           content: 'Use the configured request or approval channel for this action.',
           flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+      if (!approval && (!interaction.isChatInputCommand()
+        || ['movie', 'tv'].includes(interaction.commandName))
+        && !consumeRequestBudget('discord', interaction.user.id)) {
+        if (interaction.isRepliable()) await interaction.reply({
+          content: 'Too many requests. Wait a minute before trying again.', flags: MessageFlags.Ephemeral,
         });
         return;
       }

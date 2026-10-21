@@ -1,3 +1,4 @@
+import { consumeRequestBudget } from '../core/submission';
 import type { App } from "@slack/bolt";
 
 /** Reject commands and actions outside their configured channel before any handler runs. */
@@ -17,6 +18,13 @@ export function registerChannelBoundary(
     const channel = payload.channel_id ?? payload.channel?.id;
     const approval = payload.actions?.some((a) => /^(approve|reject)_/.test(a.action_id));
     if (channel !== (approval ? config.approvalChannelId : config.requestChannelId)) {
+      if (ack) await ack();
+      return;
+    }
+    const request = body as { command?: string; user_id?: string; user?: { id: string } };
+    const user = request.user_id ?? request.user?.id;
+    if (!approval && user && (!request.command || ['/movie', '/tv'].includes(request.command))
+      && !consumeRequestBudget('slack', user)) {
       if (ack) await ack();
       return;
     }

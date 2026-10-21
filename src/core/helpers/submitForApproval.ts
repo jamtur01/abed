@@ -1,8 +1,9 @@
+import { reserveMovieRequest, reserveTvRequest, assertCanSubmit } from '../submission';
 import type { RadarrSearchResult } from '../../radarr/types';
 import type { RadarrClient } from '../../radarr/client';
 import type { SonarrSearchResult } from '../../sonarr/types';
 import type { SonarrClient } from '../../sonarr/client';
-import { createRequest, updateRequestStatus, createTvRequest, updateTvRequestStatus } from '../../db/index';
+import { updateRequestStatus, updateTvRequestStatus } from '../../db/index';
 import { buildApprovalRequestMessage, buildTvApprovalRequestMessage } from '../../slack/messages/index';
 import { getMoviePosterUrl, getTvPosterUrl } from './posterUrl';
 import { createLogger } from '../../logger';
@@ -29,13 +30,14 @@ type SubmitForApprovalResult = {
 export async function submitMovieForApproval(params: SubmitForApprovalParams): Promise<SubmitForApprovalResult> {
   const { movie, userId, client, radarrClient, approvalChannelId } = params;
 
+  assertCanSubmit('movie', 'slack', userId, movie.tmdbId);
   const exists = await radarrClient.movieExists(movie.tmdbId);
   if (exists) {
     log.info('Already in Radarr', { user: userId, movie: `${movie.title} (${movie.year})`, tmdbId: movie.tmdbId });
     return { success: false, alreadyExists: true };
   }
 
-  const request = createRequest({
+  const request = reserveMovieRequest({
     movie_title: movie.title,
     tmdb_id: movie.tmdbId,
     imdb_id: movie.imdbId,
@@ -101,6 +103,7 @@ type SubmitTvForApprovalParams = {
 export async function submitTvForApproval(params: SubmitTvForApprovalParams): Promise<SubmitForApprovalResult> {
   const { show, userId, client, sonarrClient, approvalChannelId } = params;
 
+  assertCanSubmit('tv', 'slack', userId, show.tvdbId);
   const exists = await sonarrClient.seriesExists(show.tvdbId);
   if (exists) {
     log.info('Already in Sonarr', { user: userId, show: `${show.title} (${show.year})`, tvdbId: show.tvdbId });
@@ -109,7 +112,7 @@ export async function submitTvForApproval(params: SubmitTvForApprovalParams): Pr
 
   const posterUrl = getTvPosterUrl(show);
 
-  const request = createTvRequest({
+  const request = reserveTvRequest({
     show_title: show.title,
     tvdb_id: show.tvdbId,
     year: show.year,

@@ -15,8 +15,9 @@ function createMockApp() {
 function mockActionPayload(tvdbIdStr: string, userId = 'U_APPROVER') {
   return {
     body: {
+      channel: { id: 'C_APPROVAL' }, message: { ts: '111.222' },
       user: { id: userId },
-      actions: [{ action_id: ACTION_IDS.REJECT_TV, value: tvdbIdStr }],
+      actions: [{ action_id: ACTION_IDS.REJECT_TV, value: 'request:1' }],
     },
     ack: mock(async () => {}),
     respond: mock(async (_: any) => {}),
@@ -40,6 +41,7 @@ function seedPendingTvRequest(slackMessageTs = '111.222') {
     tvdb_id: 81189,
     year: 2008,
     poster_url: null,
+    approval_channel_id: 'C_APPROVAL',
     requester_slack_id: 'U_REQUESTER',
   });
   updateTvRequestStatus({ id: req.id, status: 'pending', slack_message_ts: slackMessageTs });
@@ -81,7 +83,8 @@ describe('rejectTv action', () => {
       tvdb_id: 81189,
       year: 2008,
       poster_url: null,
-      requester_slack_id: 'U_REQUESTER',
+      approval_channel_id: 'C_APPROVAL',
+    requester_slack_id: 'U_REQUESTER',
     });
     updateTvRequestStatus({ id: req.id, status: 'rejected', approver_slack_id: 'U_OTHER_APPROVER' });
 

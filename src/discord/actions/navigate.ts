@@ -3,7 +3,7 @@ import type { ButtonInteraction } from 'discord.js';
 import type { RadarrClient } from '../../radarr/client';
 import type { SonarrClient } from '../../sonarr/client';
 import { getResults, clearResults, getTvResults, clearTvResults } from '../../core/searchCache';
-import { createRequest, createTvRequest, getRequestByTmdbId } from '../../db/index';
+import { createRequest, createTvRequest, updateRequestStatus, updateTvRequestStatus } from '../../db/index';
 import { buildMovieCarouselPage, buildTvCarouselPage, buildApprovalRequestEmbed, buildTvApprovalRequestEmbed } from '../messages/index';
 import { getMoviePosterUrl, getTvPosterUrl } from '../../core/helpers/posterUrl';
 import { createLogger } from '../../logger';
@@ -122,19 +122,6 @@ export async function handleMovieCarouselRequest(
     if (isDuplicate) {
       log.info('Movie already exists', { user: userId, tmdbId: movie.tmdbId });
 
-      const existingReq = getRequestByTmdbId(movie.tmdbId);
-      if (!existingReq || existingReq.status !== 'already_exists') {
-        createRequest({
-          movie_title: movie.title,
-          tmdb_id: movie.tmdbId,
-          imdb_id: movie.imdbId,
-          year: movie.year,
-          poster_url: getMoviePosterUrl(movie),
-          requester_slack_id: userId,
-          platform: 'discord',
-        });
-      }
-
       await interaction.followUp({
         content: `ℹ️ **${movie.title} (${movie.year})** is already in the library!`,
         flags: MessageFlags.Ephemeral,
@@ -148,19 +135,20 @@ export async function handleMovieCarouselRequest(
       throw new Error('Approval channel not found or bot lacks access');
     }
 
-    const approvalMsg = buildApprovalRequestEmbed(movie, userId);
-    const sentMsg = await approvalChannel.send({ ...approvalMsg });
-
-    createRequest({
+    const request = createRequest({
       movie_title: movie.title,
       tmdb_id: movie.tmdbId,
       imdb_id: movie.imdbId,
       year: movie.year,
       poster_url: getMoviePosterUrl(movie),
       requester_slack_id: userId,
-      slack_message_ts: sentMsg.id,
+      approval_channel_id: deps.approvalChannelId,
       platform: 'discord',
     });
+
+    const approvalMsg = buildApprovalRequestEmbed(movie, userId, request.id);
+    const sentMsg = await approvalChannel.send({ ...approvalMsg });
+    updateRequestStatus({ id: request.id, status: 'pending', slack_message_ts: sentMsg.id });
 
     log.info('Movie carousel approval request posted', { user: userId, tmdbId: movie.tmdbId, messageId: sentMsg.id });
 
@@ -240,18 +228,19 @@ export async function handleTvCarouselRequest(
       throw new Error('Approval channel not found or bot lacks access');
     }
 
-    const approvalMsg = buildTvApprovalRequestEmbed(show, userId);
-    const sentMsg = await approvalChannel.send({ ...approvalMsg });
-
-    createTvRequest({
+    const request = createTvRequest({
       show_title: show.title,
       tvdb_id: show.tvdbId,
       year: show.year,
       poster_url: getTvPosterUrl(show),
       requester_slack_id: userId,
-      slack_message_ts: sentMsg.id,
+      approval_channel_id: deps.approvalChannelId,
       platform: 'discord',
     });
+
+    const approvalMsg = buildTvApprovalRequestEmbed(show, userId, request.id);
+    const sentMsg = await approvalChannel.send({ ...approvalMsg });
+    updateTvRequestStatus({ id: request.id, status: 'pending', slack_message_ts: sentMsg.id });
 
     log.info('TV carousel approval request posted', { user: userId, tvdbId: show.tvdbId, messageId: sentMsg.id });
 

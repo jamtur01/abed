@@ -13,12 +13,13 @@ describe('Discord Approve/Reject TV', () => {
     getDb(':memory:');
     
     mockInteraction = {
+      channelId: 'C_APPROVAL',
       user: { id: 'A123' },
-      customId: 'approve_tv_456',
+      customId: 'approve_tv_request_1',
       deferUpdate: mock(),
       reply: mock(),
       followUp: mock(),
-      message: { edit: mock() },
+      message: { id: 'message1', edit: mock() },
       client: {
         users: {
           fetch: mock().mockResolvedValue({ send: mock() }),
@@ -48,7 +49,7 @@ describe('Discord Approve/Reject TV', () => {
         tvdb_id: 456,
         year: 2008,
         requester_slack_id: 'U123',
-        platform: 'discord',
+        platform: 'discord', approval_channel_id: 'C_APPROVAL', slack_message_ts: 'message1',
       });
       
       await handleApproveTv(mockInteraction, { sonarrClient: mockSonarrClient as unknown as SonarrClient, approverDiscordIds, qualityProfileId: 1, rootFolderPath: '/' });
@@ -64,7 +65,7 @@ describe('Discord Approve/Reject TV', () => {
 
   describe('handleRejectTv', () => {
     beforeEach(() => {
-      mockInteraction.customId = 'reject_tv_456';
+      mockInteraction.customId = 'reject_tv_request_1';
     });
 
     test('updates DB status to rejected on happy path', async () => {
@@ -73,7 +74,7 @@ describe('Discord Approve/Reject TV', () => {
         tvdb_id: 456,
         year: 2008,
         requester_slack_id: 'U123',
-        platform: 'discord',
+        platform: 'discord', approval_channel_id: 'C_APPROVAL', slack_message_ts: 'message1',
       });
       
       await handleRejectTv(mockInteraction, { approverDiscordIds });

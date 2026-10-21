@@ -13,7 +13,7 @@ import { getMoviePosterUrl, getTvPosterUrl } from '../../core/helpers/posterUrl'
 // MOVIE MESSAGES
 // ============================================================================
 
-export function buildApprovalRequestEmbed(movie: RadarrSearchResult, requesterDiscordId: string) {
+export function buildApprovalRequestEmbed(movie: RadarrSearchResult, requesterDiscordId: string, requestId: number) {
   const embed = new EmbedBuilder()
     .setColor('#ffcc00')
     .setTitle(`Movie Request: ${movie.title} (${movie.year})`)
@@ -32,12 +32,12 @@ export function buildApprovalRequestEmbed(movie: RadarrSearchResult, requesterDi
   }
 
   const approveBtn = new ButtonBuilder()
-    .setCustomId(`approve_movie_${movie.tmdbId}`)
+    .setCustomId(`approve_movie_request_${requestId}`)
     .setLabel('Approve')
     .setStyle(ButtonStyle.Success);
 
   const rejectBtn = new ButtonBuilder()
-    .setCustomId(`reject_movie_${movie.tmdbId}`)
+    .setCustomId(`reject_movie_request_${requestId}`)
     .setLabel('Reject')
     .setStyle(ButtonStyle.Danger);
 
@@ -83,7 +83,7 @@ export function buildRejectedEmbed(movie: MovieRequest, approverDiscordId: strin
 // TV MESSAGES
 // ============================================================================
 
-export function buildTvApprovalRequestEmbed(show: SonarrSearchResult, requesterDiscordId: string) {
+export function buildTvApprovalRequestEmbed(show: SonarrSearchResult, requesterDiscordId: string, requestId: number) {
   const embed = new EmbedBuilder()
     .setColor('#ffcc00')
     .setTitle(`TV Request: ${show.title} (${show.year})`)
@@ -105,12 +105,12 @@ export function buildTvApprovalRequestEmbed(show: SonarrSearchResult, requesterD
   }
 
   const approveBtn = new ButtonBuilder()
-    .setCustomId(`approve_tv_${show.tvdbId}`)
+    .setCustomId(`approve_tv_request_${requestId}`)
     .setLabel('Approve')
     .setStyle(ButtonStyle.Success);
 
   const rejectBtn = new ButtonBuilder()
-    .setCustomId(`reject_tv_${show.tvdbId}`)
+    .setCustomId(`reject_tv_request_${requestId}`)
     .setLabel('Reject')
     .setStyle(ButtonStyle.Danger);
 

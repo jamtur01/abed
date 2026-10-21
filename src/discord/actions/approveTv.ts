@@ -1,6 +1,6 @@
 import { ButtonInteraction, MessageFlags } from 'discord.js';
 import type { SonarrClient } from '../../sonarr/client';
-import { getTvRequestByTvdbId, updateTvRequestStatus } from '../../db/index';
+import { getTvRequest, updateTvRequestStatus } from '../../db/index';
 import { buildTvApprovedEmbed, buildTvRejectedEmbed } from '../messages/index';
 import { createLogger } from '../../logger';
 
@@ -16,10 +16,10 @@ export async function handleApproveTv(
   }
 ) {
   const userId = interaction.user.id;
-  const tvdbIdStr = interaction.customId.replace('approve_tv_', '');
-  const tvdbId = parseInt(tvdbIdStr, 10);
+  const value = interaction.customId.replace('approve_tv_request_', '');
+  const requestId = /^[1-9]\d*$/.test(value) ? Number(value) : NaN;
 
-  log.info('Approve TV clicked', { user: userId, tvdbId });
+  log.info('Approve TV clicked', { user: userId, requestId });
 
   if (!deps.sonarrClient) {
     await interaction.reply({
@@ -38,9 +38,11 @@ export async function handleApproveTv(
     return;
   }
 
-  const request = getTvRequestByTvdbId(tvdbId);
-  if (!request) {
-    log.warn('Request not found in DB', { tvdbId });
+  const request = Number.isSafeInteger(requestId) ? getTvRequest(requestId) : null;
+  if (!request || request.platform !== 'discord'
+    || !request.approval_channel_id || interaction.channelId !== request.approval_channel_id
+    || !request.slack_message_ts || interaction.message.id !== request.slack_message_ts) {
+    log.warn('Request not found in DB', { requestId });
     await interaction.reply({
       content: '❌ Request not found in database.',
       flags: MessageFlags.Ephemeral,
@@ -48,6 +50,7 @@ export async function handleApproveTv(
     return;
   }
 
+  const tvdbId = request.tvdb_id;
   if (request.status !== 'pending') {
     log.info('Request already processed', { tvdbId, status: request.status });
     await interaction.deferUpdate();
@@ -102,10 +105,10 @@ export async function handleRejectTv(
   deps: { approverDiscordIds: string[] }
 ) {
   const userId = interaction.user.id;
-  const tvdbIdStr = interaction.customId.replace('reject_tv_', '');
-  const tvdbId = parseInt(tvdbIdStr, 10);
+  const value = interaction.customId.replace('reject_tv_request_', '');
+  const requestId = /^[1-9]\d*$/.test(value) ? Number(value) : NaN;
 
-  log.info('Reject TV clicked', { user: userId, tvdbId });
+  log.info('Reject TV clicked', { user: userId, requestId });
 
   if (!deps.approverDiscordIds.includes(userId)) {
     log.warn('Unauthorized reject attempt', { user: userId });
@@ -116,9 +119,11 @@ export async function handleRejectTv(
     return;
   }
 
-  const request = getTvRequestByTvdbId(tvdbId);
-  if (!request) {
-    log.warn('Request not found in DB', { tvdbId });
+  const request = Number.isSafeInteger(requestId) ? getTvRequest(requestId) : null;
+  if (!request || request.platform !== 'discord'
+    || !request.approval_channel_id || interaction.channelId !== request.approval_channel_id
+    || !request.slack_message_ts || interaction.message.id !== request.slack_message_ts) {
+    log.warn('Request not found in DB', { requestId });
     await interaction.reply({
       content: '❌ Request not found in database.',
       flags: MessageFlags.Ephemeral,
@@ -126,6 +131,7 @@ export async function handleRejectTv(
     return;
   }
 
+  const tvdbId = request.tvdb_id;
   if (request.status !== 'pending') {
     log.info('Request already processed', { tvdbId, status: request.status });
     await interaction.deferUpdate();

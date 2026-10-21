@@ -85,6 +85,7 @@ export function buildSearchResultsMessage(movies: RadarrSearchResult[]): Block[]
 export function buildApprovalRequestMessage(
   movie: { title: string; year: number; overview?: string; posterUrl?: string | null; tmdbId: number },
   requesterSlackId: string,
+  requestId: number,
 ): Block[] {
   const blocks: Block[] = [
     {
@@ -123,14 +124,14 @@ export function buildApprovalRequestMessage(
         type: 'button',
         text: { type: 'plain_text', text: ':white_check_mark: Approve', emoji: true },
         action_id: ACTION_IDS.APPROVE_MOVIE,
-        value: String(movie.tmdbId),
+        value: `request:${requestId}`,
         style: 'primary',
       },
       {
         type: 'button',
         text: { type: 'plain_text', text: ':x: Reject', emoji: true },
         action_id: ACTION_IDS.REJECT_MOVIE,
-        value: String(movie.tmdbId),
+        value: `request:${requestId}`,
         style: 'danger',
       },
     ],
@@ -242,6 +243,7 @@ export function buildTvSearchResultsMessage(shows: SonarrSearchResult[]): Block[
 export function buildTvApprovalRequestMessage(
   show: { title: string; year: number; overview?: string; posterUrl?: string | null; tvdbId: number; network?: string; seasonCount: number },
   requesterSlackId: string,
+  requestId: number,
 ): Block[] {
   let headerText = `:tv: *TV Show Request*\n*${show.title} (${show.year})*`;
   if (show.network) {
@@ -287,14 +289,14 @@ export function buildTvApprovalRequestMessage(
         type: 'button',
         text: { type: 'plain_text', text: ':white_check_mark: Approve', emoji: true },
         action_id: ACTION_IDS.APPROVE_TV,
-        value: String(show.tvdbId),
+        value: `request:${requestId}`,
         style: 'primary',
       },
       {
         type: 'button',
         text: { type: 'plain_text', text: ':x: Reject', emoji: true },
         action_id: ACTION_IDS.REJECT_TV,
-        value: String(show.tvdbId),
+        value: `request:${requestId}`,
         style: 'danger',
       },
     ],

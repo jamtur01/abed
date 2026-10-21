@@ -1,6 +1,6 @@
 import type { App } from '@slack/bolt';
 import { buildRejectedMessage, ACTION_IDS } from '../messages/index';
-import { getRequestByTmdbId, updateRequestStatus } from '../../db/index';
+import { getRequest, updateRequestStatus } from '../../db/index';
 import { createLogger } from '../../logger';
 
 const log = createLogger('reject');
@@ -15,11 +15,12 @@ export function registerRejectMovieAction(app: App, deps: RejectMovieDeps): void
     await ack();
 
     const action = (body as any).actions[0];
-    const tmdbId = parseInt(action.value, 10);
+    const requestId = /^request:[1-9]\d*$/.test(action.value)
+      ? Number(action.value.slice(8)) : NaN;
     const approverId = body.user.id;
 
     if (!deps.approverSlackIds.includes(approverId)) {
-      log.warn('Unauthorized rejection attempt', { user: approverId, tmdbId });
+      log.warn('Unauthorized rejection attempt', { user: approverId, requestId });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,
@@ -29,8 +30,12 @@ export function registerRejectMovieAction(app: App, deps: RejectMovieDeps): void
     }
 
     try {
-      const request = getRequestByTmdbId(tmdbId);
-      if (!request) {
+      const request = Number.isSafeInteger(requestId) ? getRequest(requestId) : null;
+      if (!request || request.platform !== 'slack'
+        || request.approval_channel_id !== deps.approvalChannelId
+        || (body as any).channel?.id !== request.approval_channel_id
+        || !request.slack_message_ts
+        || (body as any).message?.ts !== request.slack_message_ts) {
         await respond({
           response_type: 'ephemeral',
           replace_original: false,
@@ -40,13 +45,13 @@ export function registerRejectMovieAction(app: App, deps: RejectMovieDeps): void
       }
 
       if (request.status !== 'pending') {
-        log.warn('Request not pending', { tmdbId, status: request.status });
+        log.warn('Request not pending', { requestId, status: request.status });
         return;
       }
 
       updateRequestStatus({ id: request.id, status: 'rejected', approver_slack_id: approverId });
 
-      log.info('Movie rejected', { approver: approverId, movie: `${request.movie_title} (${request.year})`, tmdbId });
+      log.info('Movie rejected', { approver: approverId, movie: `${request.movie_title} (${request.year})`, requestId });
 
       if (request.slack_message_ts) {
         await client.chat.update({
@@ -66,7 +71,7 @@ export function registerRejectMovieAction(app: App, deps: RejectMovieDeps): void
         text: `:x: Your request for *${request.movie_title} (${request.year})* has been rejected by <@${approverId}>.`,
       });
     } catch (error) {
-      log.error('Error in rejectMovie action', { user: approverId, tmdbId, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in rejectMovie action', { user: approverId, requestId, error: error instanceof Error ? error.message : String(error) });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,

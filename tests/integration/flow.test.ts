@@ -74,7 +74,7 @@ function mockCommandPayload(text: string, userId = REQUESTER_ID) {
 
 function mockActionPayload(actionId: string, value: string, userId = APPROVER_ID, client = createMockClient()) {
   return {
-    body:    { user: { id: userId }, actions: [{ action_id: actionId, value }] },
+    body: { channel: { id: APPROVAL_CHANNEL }, message: { ts: '111.222' }, user: { id: userId }, actions: [{ action_id: actionId, value: /^(approve|reject)_/.test(actionId) ? 'request:1' : value }] },
     ack:     mock(async () => {}),
     respond: mock(async (_: any) => {}),
     client,

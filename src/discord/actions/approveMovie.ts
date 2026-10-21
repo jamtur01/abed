@@ -1,6 +1,6 @@
 import { ButtonInteraction, MessageFlags } from 'discord.js';
 import type { RadarrClient } from '../../radarr/client';
-import { getRequestByTmdbId, updateRequestStatus } from '../../db/index';
+import { getRequest, updateRequestStatus } from '../../db/index';
 import { buildApprovedEmbed, buildRejectedEmbed } from '../messages/index';
 import { createLogger } from '../../logger';
 
@@ -16,10 +16,10 @@ export async function handleApproveMovie(
   }
 ) {
   const userId = interaction.user.id;
-  const tmdbIdStr = interaction.customId.replace('approve_movie_', '');
-  const tmdbId = parseInt(tmdbIdStr, 10);
+  const value = interaction.customId.replace('approve_movie_request_', '');
+  const requestId = /^[1-9]\d*$/.test(value) ? Number(value) : NaN;
 
-  log.info('Approve movie clicked', { user: userId, tmdbId });
+  log.info('Approve movie clicked', { user: userId, requestId });
 
   if (!deps.approverDiscordIds.includes(userId)) {
     log.warn('Unauthorized approve attempt', { user: userId });
@@ -30,9 +30,11 @@ export async function handleApproveMovie(
     return;
   }
 
-  const request = getRequestByTmdbId(tmdbId);
-  if (!request) {
-    log.warn('Request not found in DB', { tmdbId });
+  const request = Number.isSafeInteger(requestId) ? getRequest(requestId) : null;
+  if (!request || request.platform !== 'discord'
+    || !request.approval_channel_id || interaction.channelId !== request.approval_channel_id
+    || !request.slack_message_ts || interaction.message.id !== request.slack_message_ts) {
+    log.warn('Request not found in DB', { requestId });
     await interaction.reply({
       content: '❌ Request not found in database.',
       flags: MessageFlags.Ephemeral,
@@ -41,6 +43,7 @@ export async function handleApproveMovie(
   }
 
   // Race condition guard
+  const tmdbId = request.tmdb_id;
   if (request.status !== 'pending') {
     log.info('Request already processed', { tmdbId, status: request.status });
     // Still acknowledge the interaction silently
@@ -98,10 +101,10 @@ export async function handleRejectMovie(
   deps: { approverDiscordIds: string[] }
 ) {
   const userId = interaction.user.id;
-  const tmdbIdStr = interaction.customId.replace('reject_movie_', '');
-  const tmdbId = parseInt(tmdbIdStr, 10);
+  const value = interaction.customId.replace('reject_movie_request_', '');
+  const requestId = /^[1-9]\d*$/.test(value) ? Number(value) : NaN;
 
-  log.info('Reject movie clicked', { user: userId, tmdbId });
+  log.info('Reject movie clicked', { user: userId, requestId });
 
   if (!deps.approverDiscordIds.includes(userId)) {
     log.warn('Unauthorized reject attempt', { user: userId });
@@ -112,9 +115,11 @@ export async function handleRejectMovie(
     return;
   }
 
-  const request = getRequestByTmdbId(tmdbId);
-  if (!request) {
-    log.warn('Request not found in DB', { tmdbId });
+  const request = Number.isSafeInteger(requestId) ? getRequest(requestId) : null;
+  if (!request || request.platform !== 'discord'
+    || !request.approval_channel_id || interaction.channelId !== request.approval_channel_id
+    || !request.slack_message_ts || interaction.message.id !== request.slack_message_ts) {
+    log.warn('Request not found in DB', { requestId });
     await interaction.reply({
       content: '❌ Request not found in database.',
       flags: MessageFlags.Ephemeral,
@@ -122,6 +127,7 @@ export async function handleRejectMovie(
     return;
   }
 
+  const tmdbId = request.tmdb_id;
   if (request.status !== 'pending') {
     log.info('Request already processed', { tmdbId, status: request.status });
     await interaction.deferUpdate();

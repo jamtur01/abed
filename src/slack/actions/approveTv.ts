@@ -1,7 +1,7 @@
 import type { App } from '@slack/bolt';
 import type { SonarrClient } from '../../sonarr/client';
 import { buildTvApprovedMessage, ACTION_IDS } from '../messages/index';
-import { getTvRequestByTvdbId, updateTvRequestStatus } from '../../db/index';
+import { getTvRequest, updateTvRequestStatus } from '../../db/index';
 import { createLogger } from '../../logger';
 
 const log = createLogger('approve-tv');
@@ -19,11 +19,12 @@ export function registerApproveTvAction(app: App, deps: ApproveTvDeps): void {
     await ack();
 
     const action = (body as any).actions[0];
-    const tvdbId = parseInt(action.value, 10);
+    const requestId = /^request:[1-9]\d*$/.test(action.value)
+      ? Number(action.value.slice(8)) : NaN;
     const approverId = body.user.id;
 
     if (!deps.approverSlackIds.includes(approverId)) {
-      log.warn('Unauthorized approval attempt', { user: approverId, tvdbId });
+      log.warn('Unauthorized approval attempt', { user: approverId, requestId });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,
@@ -33,8 +34,12 @@ export function registerApproveTvAction(app: App, deps: ApproveTvDeps): void {
     }
 
     try {
-      const request = getTvRequestByTvdbId(tvdbId);
-      if (!request) {
+      const request = Number.isSafeInteger(requestId) ? getTvRequest(requestId) : null;
+      if (!request || request.platform !== 'slack'
+        || request.approval_channel_id !== deps.approvalChannelId
+        || (body as any).channel?.id !== request.approval_channel_id
+        || !request.slack_message_ts
+        || (body as any).message?.ts !== request.slack_message_ts) {
         await respond({
           response_type: 'ephemeral',
           replace_original: false,
@@ -44,12 +49,12 @@ export function registerApproveTvAction(app: App, deps: ApproveTvDeps): void {
       }
 
       if (request.status !== 'pending') {
-        log.warn('Request not pending', { tvdbId, status: request.status });
+        log.warn('Request not pending', { requestId, status: request.status });
         return;
       }
 
       const searchResults = await deps.sonarrClient.searchSeries(request.show_title);
-      const showData = searchResults.find(s => s.tvdbId === tvdbId);
+      const showData = searchResults.find(s => s.tvdbId === request.tvdb_id);
       if (!showData) {
         await respond({
           response_type: 'ephemeral',
@@ -61,11 +66,11 @@ export function registerApproveTvAction(app: App, deps: ApproveTvDeps): void {
 
       await deps.sonarrClient.addSeries(showData, deps.qualityProfileId, deps.rootFolderPath);
 
-      log.info('Sonarr series added', { tvdbId });
+      log.info('Sonarr series added', { requestId });
 
       updateTvRequestStatus({ id: request.id, status: 'approved', approver_slack_id: approverId });
 
-      log.info('TV show approved', { approver: approverId, show: `${request.show_title} (${request.year})`, tvdbId });
+      log.info('TV show approved', { approver: approverId, show: `${request.show_title} (${request.year})`, requestId });
 
       if (request.slack_message_ts) {
         await client.chat.update({
@@ -85,7 +90,7 @@ export function registerApproveTvAction(app: App, deps: ApproveTvDeps): void {
         text: `:white_check_mark: Your request for *${request.show_title} (${request.year})* has been approved by <@${approverId}>! Sonarr is on it.`,
       });
     } catch (error) {
-      log.error('Error in approveTv action', { user: approverId, tvdbId, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in approveTv action', { user: approverId, requestId, error: error instanceof Error ? error.message : String(error) });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,

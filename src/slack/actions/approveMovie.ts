@@ -1,7 +1,7 @@
 import type { App } from '@slack/bolt';
 import type { RadarrClient } from '../../radarr/client';
 import { buildApprovedMessage, ACTION_IDS } from '../messages/index';
-import { getRequestByTmdbId, updateRequestStatus } from '../../db/index';
+import { getRequest, updateRequestStatus } from '../../db/index';
 import { createLogger } from '../../logger';
 
 const log = createLogger('approve');
@@ -19,11 +19,12 @@ export function registerApproveMovieAction(app: App, deps: ApproveMovieDeps): vo
     await ack();
 
     const action = (body as any).actions[0];
-    const tmdbId = parseInt(action.value, 10);
+    const requestId = /^request:[1-9]\d*$/.test(action.value)
+      ? Number(action.value.slice(8)) : NaN;
     const approverId = body.user.id;
 
     if (!deps.approverSlackIds.includes(approverId)) {
-      log.warn('Unauthorized approval attempt', { user: approverId, tmdbId });
+      log.warn('Unauthorized approval attempt', { user: approverId, requestId });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,
@@ -33,8 +34,12 @@ export function registerApproveMovieAction(app: App, deps: ApproveMovieDeps): vo
     }
 
     try {
-      const request = getRequestByTmdbId(tmdbId);
-      if (!request) {
+      const request = Number.isSafeInteger(requestId) ? getRequest(requestId) : null;
+      if (!request || request.platform !== 'slack'
+        || request.approval_channel_id !== deps.approvalChannelId
+        || (body as any).channel?.id !== request.approval_channel_id
+        || !request.slack_message_ts
+        || (body as any).message?.ts !== request.slack_message_ts) {
         await respond({
           response_type: 'ephemeral',
           replace_original: false,
@@ -44,12 +49,12 @@ export function registerApproveMovieAction(app: App, deps: ApproveMovieDeps): vo
       }
 
       if (request.status !== 'pending') {
-        log.warn('Request not pending', { tmdbId, status: request.status });
+        log.warn('Request not pending', { requestId, status: request.status });
         return;
       }
 
       const searchResults = await deps.radarrClient.searchMovies(request.movie_title);
-      const movieData = searchResults.find(m => m.tmdbId === tmdbId);
+      const movieData = searchResults.find(m => m.tmdbId === request.tmdb_id);
       if (!movieData) {
         await respond({
           response_type: 'ephemeral',
@@ -61,11 +66,11 @@ export function registerApproveMovieAction(app: App, deps: ApproveMovieDeps): vo
 
       await deps.radarrClient.addMovie(movieData, deps.qualityProfileId, deps.rootFolderPath);
 
-      log.info('Radarr movie added', { tmdbId });
+      log.info('Radarr movie added', { requestId });
 
       updateRequestStatus({ id: request.id, status: 'approved', approver_slack_id: approverId });
 
-      log.info('Movie approved', { approver: approverId, movie: `${request.movie_title} (${request.year})`, tmdbId });
+      log.info('Movie approved', { approver: approverId, movie: `${request.movie_title} (${request.year})`, requestId });
 
       if (request.slack_message_ts) {
         await client.chat.update({
@@ -85,7 +90,7 @@ export function registerApproveMovieAction(app: App, deps: ApproveMovieDeps): vo
         text: `:white_check_mark: Your request for *${request.movie_title} (${request.year})* has been approved by <@${approverId}>! Radarr is on it.`,
       });
     } catch (error) {
-      log.error('Error in approveMovie action', { user: approverId, tmdbId, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in approveMovie action', { user: approverId, requestId, error: error instanceof Error ? error.message : String(error) });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,

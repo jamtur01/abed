@@ -1,6 +1,6 @@
 import type { App } from '@slack/bolt';
 import { buildTvRejectedMessage, ACTION_IDS } from '../messages/index';
-import { getTvRequestByTvdbId, updateTvRequestStatus } from '../../db/index';
+import { getTvRequest, updateTvRequestStatus } from '../../db/index';
 import { createLogger } from '../../logger';
 
 const log = createLogger('reject-tv');
@@ -15,11 +15,12 @@ export function registerRejectTvAction(app: App, deps: RejectTvDeps): void {
     await ack();
 
     const action = (body as any).actions[0];
-    const tvdbId = parseInt(action.value, 10);
+    const requestId = /^request:[1-9]\d*$/.test(action.value)
+      ? Number(action.value.slice(8)) : NaN;
     const approverId = body.user.id;
 
     if (!deps.approverSlackIds.includes(approverId)) {
-      log.warn('Unauthorized rejection attempt', { user: approverId, tvdbId });
+      log.warn('Unauthorized rejection attempt', { user: approverId, requestId });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,
@@ -29,8 +30,12 @@ export function registerRejectTvAction(app: App, deps: RejectTvDeps): void {
     }
 
     try {
-      const request = getTvRequestByTvdbId(tvdbId);
-      if (!request) {
+      const request = Number.isSafeInteger(requestId) ? getTvRequest(requestId) : null;
+      if (!request || request.platform !== 'slack'
+        || request.approval_channel_id !== deps.approvalChannelId
+        || (body as any).channel?.id !== request.approval_channel_id
+        || !request.slack_message_ts
+        || (body as any).message?.ts !== request.slack_message_ts) {
         await respond({
           response_type: 'ephemeral',
           replace_original: false,
@@ -40,13 +45,13 @@ export function registerRejectTvAction(app: App, deps: RejectTvDeps): void {
       }
 
       if (request.status !== 'pending') {
-        log.warn('Request not pending', { tvdbId, status: request.status });
+        log.warn('Request not pending', { requestId, status: request.status });
         return;
       }
 
       updateTvRequestStatus({ id: request.id, status: 'rejected', approver_slack_id: approverId });
 
-      log.info('TV show rejected', { approver: approverId, show: `${request.show_title} (${request.year})`, tvdbId });
+      log.info('TV show rejected', { approver: approverId, show: `${request.show_title} (${request.year})`, requestId });
 
       if (request.slack_message_ts) {
         await client.chat.update({
@@ -66,7 +71,7 @@ export function registerRejectTvAction(app: App, deps: RejectTvDeps): void {
         text: `:x: Your request for *${request.show_title} (${request.year})* has been rejected by <@${approverId}>.`,
       });
     } catch (error) {
-      log.error('Error in rejectTv action', { user: approverId, tvdbId, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in rejectTv action', { user: approverId, requestId, error: error instanceof Error ? error.message : String(error) });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,

@@ -13,12 +13,13 @@ describe('Discord Approve/Reject Movie', () => {
     getDb(':memory:');
     
     mockInteraction = {
+      channelId: 'C_APPROVAL',
       user: { id: 'A123' },
-      customId: 'approve_movie_123',
+      customId: 'approve_movie_request_1',
       deferUpdate: mock(),
       reply: mock(),
       followUp: mock(),
-      message: { edit: mock() },
+      message: { id: 'message1', edit: mock() },
       client: {
         users: {
           fetch: mock().mockResolvedValue({ send: mock() }),
@@ -48,7 +49,7 @@ describe('Discord Approve/Reject Movie', () => {
         tmdb_id: 123,
         year: 1999,
         requester_slack_id: 'U123',
-        platform: 'discord',
+        platform: 'discord', approval_channel_id: 'C_APPROVAL', slack_message_ts: 'message1',
       });
       
       await handleApproveMovie(mockInteraction, { radarrClient: mockRadarrClient as unknown as RadarrClient, approverDiscordIds, qualityProfileId: 1, rootFolderPath: '/' });
@@ -64,7 +65,7 @@ describe('Discord Approve/Reject Movie', () => {
 
   describe('handleRejectMovie', () => {
     beforeEach(() => {
-      mockInteraction.customId = 'reject_movie_123';
+      mockInteraction.customId = 'reject_movie_request_1';
     });
 
     test('updates DB status to rejected on happy path', async () => {
@@ -73,7 +74,7 @@ describe('Discord Approve/Reject Movie', () => {
         tmdb_id: 123,
         year: 1999,
         requester_slack_id: 'U123',
-        platform: 'discord',
+        platform: 'discord', approval_channel_id: 'C_APPROVAL', slack_message_ts: 'message1',
       });
       
       await handleRejectMovie(mockInteraction, { approverDiscordIds });

@@ -42,6 +42,7 @@ export async function submitMovieForApproval(params: SubmitForApprovalParams): P
     year: movie.year,
     poster_url: getMoviePosterUrl(movie),
     requester_slack_id: userId,
+    approval_channel_id: approvalChannelId,
   });
 
   const postApprovalMessage = () =>
@@ -56,6 +57,7 @@ export async function submitMovieForApproval(params: SubmitForApprovalParams): P
           overview: movie.overview,
         },
         userId,
+        request.id,
       ),
       text: `Movie request: ${movie.title} (${movie.year})`,
     });
@@ -113,6 +115,7 @@ export async function submitTvForApproval(params: SubmitTvForApprovalParams): Pr
     year: show.year,
     poster_url: posterUrl,
     requester_slack_id: userId,
+    approval_channel_id: approvalChannelId,
   });
 
   const seasonCount = show.seasons.filter(s => s.seasonNumber > 0).length;
@@ -131,6 +134,7 @@ export async function submitTvForApproval(params: SubmitTvForApprovalParams): Pr
           seasonCount,
         },
         userId,
+        request.id,
       ),
       text: `TV show request: ${show.title} (${show.year})`,
     });

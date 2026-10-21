@@ -15,8 +15,9 @@ function createMockApp() {
 function mockActionPayload(tmdbIdStr: string, userId = 'U_APPROVER') {
   return {
     body: {
+      channel: { id: 'C_APPROVAL' }, message: { ts: '111.222' },
       user: { id: userId },
-      actions: [{ action_id: ACTION_IDS.APPROVE_MOVIE, value: tmdbIdStr }],
+      actions: [{ action_id: ACTION_IDS.APPROVE_MOVIE, value: 'request:1' }],
     },
     ack: mock(async () => {}),
     respond: mock(async (_: any) => {}),
@@ -64,6 +65,7 @@ function seedPendingRequest(slackMessageTs = '111.222') {
     imdb_id: 'tt1877830',
     year: 2022,
     poster_url: null,
+    approval_channel_id: 'C_APPROVAL',
     requester_slack_id: 'U_REQUESTER',
   });
   updateRequestStatus({ id: req.id, status: 'pending', slack_message_ts: slackMessageTs });
@@ -108,7 +110,8 @@ describe('approveMovie action', () => {
       imdb_id: null,
       year: 2022,
       poster_url: null,
-      requester_slack_id: 'U_REQUESTER',
+      approval_channel_id: 'C_APPROVAL',
+    requester_slack_id: 'U_REQUESTER',
     });
     updateRequestStatus({ id: req.id, status: 'approved', approver_slack_id: 'U_OTHER_APPROVER' });
 
@@ -165,4 +168,31 @@ describe('approveMovie action', () => {
       expect.objectContaining({ channel: 'U_REQUESTER', text: expect.stringContaining('approved') })
     );
   });
+  it('rejects mismatched channel, message, platform and legacy button values', async () => {
+    const request = seedPendingRequest();
+    registerApproveMovieAction(app as any, { ...defaultDeps, radarrClient: radarrClient as any });
+    for (const change of [
+      (p: any) => { p.body.channel.id = 'OTHER'; },
+      (p: any) => { p.body.message.ts = 'other.message'; },
+      (p: any) => { p.body.actions[0].value = '12345'; },
+      () => { getDb().run("UPDATE requests SET platform='discord' WHERE id=?", [request.id]); },
+    ]) {
+      const payload = mockActionPayload('12345');
+      change(payload);
+      await app.getHandler(ACTION_IDS.APPROVE_MOVIE)!(payload);
+      expect(radarrClient.addMovie).not.toHaveBeenCalled();
+    }
+  });
+
+  it('does not let an old button decide a later request for the same title', async () => {
+    const first = seedPendingRequest();
+    updateRequestStatus({ id: first.id, status: 'rejected' });
+    const second = seedPendingRequest('later.message');
+    registerApproveMovieAction(app as any, { ...defaultDeps, radarrClient: radarrClient as any });
+    await app.getHandler(ACTION_IDS.APPROVE_MOVIE)!(mockActionPayload('12345'));
+    expect(getRequestByTmdbId(12345)?.id).toBe(second.id);
+    expect(getRequestByTmdbId(12345)?.status).toBe('pending');
+    expect(radarrClient.addMovie).not.toHaveBeenCalled();
+  });
+
 });

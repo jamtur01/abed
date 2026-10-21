@@ -15,8 +15,9 @@ function createMockApp() {
 function mockActionPayload(tmdbIdStr: string, userId = 'U_APPROVER') {
   return {
     body: {
+      channel: { id: 'C_APPROVAL' }, message: { ts: '111.222' },
       user: { id: userId },
-      actions: [{ action_id: ACTION_IDS.REJECT_MOVIE, value: tmdbIdStr }],
+      actions: [{ action_id: ACTION_IDS.REJECT_MOVIE, value: 'request:1' }],
     },
     ack: mock(async () => {}),
     respond: mock(async (_: any) => {}),
@@ -41,6 +42,7 @@ function seedPendingRequest(slackMessageTs = '111.222') {
     imdb_id: 'tt1877830',
     year: 2022,
     poster_url: null,
+    approval_channel_id: 'C_APPROVAL',
     requester_slack_id: 'U_REQUESTER',
   });
   updateRequestStatus({ id: req.id, status: 'pending', slack_message_ts: slackMessageTs });
@@ -83,7 +85,8 @@ describe('rejectMovie action', () => {
       imdb_id: null,
       year: 2022,
       poster_url: null,
-      requester_slack_id: 'U_REQUESTER',
+      approval_channel_id: 'C_APPROVAL',
+    requester_slack_id: 'U_REQUESTER',
     });
     updateRequestStatus({ id: req.id, status: 'rejected', approver_slack_id: 'U_OTHER_APPROVER' });
 

@@ -20,7 +20,7 @@ describe('Discord Message Builders', () => {
   describe('Movie Messages', () => {
     test('buildApprovalRequestEmbed > includes title, year, requester, and buttons', () => {
       const movie: RadarrSearchResult = { title: 'The Matrix', year: 1999, tmdbId: 123, remotePoster: 'http://img.com/a.jpg', overview: 'A great movie.', titleSlug: 'the-matrix', images: [] };
-      const msg = buildApprovalRequestEmbed(movie, 'U123');
+      const msg = buildApprovalRequestEmbed(movie, 'U123', 42);
       
       const embed = msg.embeds[0]!.data;
       expect(embed.title).toBe('Movie Request: The Matrix (1999)');
@@ -31,12 +31,12 @@ describe('Discord Message Builders', () => {
       const row = msg.components[0]!.toJSON();
       expect(row.components.length).toBe(2);
       expect(row.components[0]!.type).toBe(2); // Button
-      expect((row.components[0] as { custom_id: string }).custom_id).toBe('approve_movie_123');
-      expect((row.components[1] as { custom_id: string }).custom_id).toBe('reject_movie_123');
+      expect((row.components[0] as { custom_id: string }).custom_id).toBe('approve_movie_request_42');
+      expect((row.components[1] as { custom_id: string }).custom_id).toBe('reject_movie_request_42');
     });
 
     test('buildApprovedEmbed > formats correctly', () => {
-      const req: MovieRequest = { id: 1, movie_title: 'The Matrix', year: 1999, tmdb_id: 123, requester_slack_id: 'U123', status: 'approved', created_at: '', updated_at: '', poster_url: null, imdb_id: null, approver_slack_id: null, slack_message_ts: null, downloaded_notified: 0, platform: 'discord' };
+      const req: MovieRequest = { id: 1, movie_title: 'The Matrix', year: 1999, tmdb_id: 123, requester_slack_id: 'U123', status: 'approved', created_at: '', updated_at: '', poster_url: null, imdb_id: null, approver_slack_id: null, slack_message_ts: null, downloaded_notified: 0, approval_channel_id: null, platform: 'discord' };
       const msg = buildApprovedEmbed(req, 'A123');
       const embed = msg.embeds[0]!.data;
       
@@ -45,7 +45,7 @@ describe('Discord Message Builders', () => {
     });
 
     test('buildRejectedEmbed > formats correctly', () => {
-      const req: MovieRequest = { id: 1, movie_title: 'The Matrix', year: 1999, tmdb_id: 123, requester_slack_id: 'U123', status: 'rejected', created_at: '', updated_at: '', poster_url: null, imdb_id: null, approver_slack_id: null, slack_message_ts: null, downloaded_notified: 0, platform: 'discord' };
+      const req: MovieRequest = { id: 1, movie_title: 'The Matrix', year: 1999, tmdb_id: 123, requester_slack_id: 'U123', status: 'rejected', created_at: '', updated_at: '', poster_url: null, imdb_id: null, approver_slack_id: null, slack_message_ts: null, downloaded_notified: 0, approval_channel_id: null, platform: 'discord' };
       const msg = buildRejectedEmbed(req, 'A123');
       const embed = msg.embeds[0]!.data;
       
@@ -57,21 +57,21 @@ describe('Discord Message Builders', () => {
   describe('TV Messages', () => {
     test('buildTvApprovalRequestEmbed > includes buttons', () => {
       const show: SonarrSearchResult = { title: 'Breaking Bad', year: 2008, tvdbId: 456, titleSlug: 'bb', seasons: [], images: [] };
-      const msg = buildTvApprovalRequestEmbed(show, 'U123');
+      const msg = buildTvApprovalRequestEmbed(show, 'U123', 42);
       
       const row = msg.components[0]!.toJSON();
-      expect((row.components[0] as { custom_id: string }).custom_id).toBe('approve_tv_456');
-      expect((row.components[1] as { custom_id: string }).custom_id).toBe('reject_tv_456');
+      expect((row.components[0] as { custom_id: string }).custom_id).toBe('approve_tv_request_42');
+      expect((row.components[1] as { custom_id: string }).custom_id).toBe('reject_tv_request_42');
     });
 
     test('buildTvApprovedEmbed > formats correctly', () => {
-      const req: TvRequest = { id: 1, show_title: 'Breaking Bad', year: 2008, tvdb_id: 456, requester_slack_id: 'U123', status: 'approved', created_at: '', updated_at: '', poster_url: null, approver_slack_id: null, slack_message_ts: null, downloaded_notified: 0, platform: 'discord' };
+      const req: TvRequest = { id: 1, show_title: 'Breaking Bad', year: 2008, tvdb_id: 456, requester_slack_id: 'U123', status: 'approved', created_at: '', updated_at: '', poster_url: null, approver_slack_id: null, slack_message_ts: null, downloaded_notified: 0, approval_channel_id: null, platform: 'discord' };
       const msg = buildTvApprovedEmbed(req, 'A123');
       expect(msg.embeds[0]!.data.fields?.[1]!.value).toInclude('Approved by <@A123>');
     });
 
     test('buildTvRejectedEmbed > formats correctly', () => {
-      const req: TvRequest = { id: 1, show_title: 'Breaking Bad', year: 2008, tvdb_id: 456, requester_slack_id: 'U123', status: 'rejected', created_at: '', updated_at: '', poster_url: null, approver_slack_id: null, slack_message_ts: null, downloaded_notified: 0, platform: 'discord' };
+      const req: TvRequest = { id: 1, show_title: 'Breaking Bad', year: 2008, tvdb_id: 456, requester_slack_id: 'U123', status: 'rejected', created_at: '', updated_at: '', poster_url: null, approver_slack_id: null, slack_message_ts: null, downloaded_notified: 0, approval_channel_id: null, platform: 'discord' };
       const msg = buildTvRejectedEmbed(req, 'A123');
       expect(msg.embeds[0]!.data.fields?.[1]!.value).toInclude('Rejected by <@A123>');
     });
@@ -85,8 +85,8 @@ describe('Discord Message Builders', () => {
 
     test('buildMyRequestsEmbed > formats list of mixed requests', () => {
       const reqs: (MovieRequest | TvRequest)[] = [
-        { id: 1, movie_title: 'The Matrix', year: 1999, tmdb_id: 123, requester_slack_id: 'U123', status: 'pending', created_at: '2023-01-01', updated_at: '', poster_url: null, imdb_id: null, approver_slack_id: null, slack_message_ts: null, downloaded_notified: 0, platform: 'discord' },
-        { id: 2, show_title: 'Breaking Bad', year: 2008, tvdb_id: 456, requester_slack_id: 'U123', status: 'approved', created_at: '2023-01-02', updated_at: '', poster_url: null, approver_slack_id: null, slack_message_ts: null, downloaded_notified: 0, platform: 'discord' },
+        { id: 1, movie_title: 'The Matrix', year: 1999, tmdb_id: 123, requester_slack_id: 'U123', status: 'pending', created_at: '2023-01-01', updated_at: '', poster_url: null, imdb_id: null, approver_slack_id: null, slack_message_ts: null, downloaded_notified: 0, approval_channel_id: null, platform: 'discord' },
+        { id: 2, show_title: 'Breaking Bad', year: 2008, tvdb_id: 456, requester_slack_id: 'U123', status: 'approved', created_at: '2023-01-02', updated_at: '', poster_url: null, approver_slack_id: null, slack_message_ts: null, downloaded_notified: 0, approval_channel_id: null, platform: 'discord' },
       ];
       
       const msg = buildMyRequestsEmbed(reqs);
@@ -282,7 +282,7 @@ describe('buildQueueEmbed', () => {
     approver_slack_id: null,
     slack_message_ts: null,
     downloaded_notified: 0,
-    platform: 'discord',
+    approval_channel_id: null, platform: 'discord',
   };
 
   const tvReq: TvRequest = {
@@ -298,7 +298,7 @@ describe('buildQueueEmbed', () => {
     approver_slack_id: null,
     slack_message_ts: null,
     downloaded_notified: 0,
-    platform: 'discord',
+    approval_channel_id: null, platform: 'discord',
   };
 
   test('returns no-requests-found embed when empty array', () => {

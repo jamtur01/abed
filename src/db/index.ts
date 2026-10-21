@@ -74,6 +74,12 @@ function initSchema(db: Database): void {
 
   migrateDownloadedNotified(db);
   migratePlatform(db);
+  for (const table of ['requests', 'tv_requests']) {
+    const columns = db.query<{ name: string }, []>(`PRAGMA table_info('${table}')`).all();
+    if (!columns.some(c => c.name === 'approval_channel_id')) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN approval_channel_id TEXT`);
+    }
+  }
 }
 
 function migratePlatform(db: Database): void {
@@ -130,9 +136,9 @@ export function markTvDownloadNotified(id: number): void {
 
 export function createRequest(input: CreateRequestInput): MovieRequest {
   const db = getDb();
-  const stmt = db.prepare<MovieRequest, [string, number, string | null, number, string | null, string, string | null, string]>(`
-    INSERT INTO requests (movie_title, tmdb_id, imdb_id, year, poster_url, requester_slack_id, slack_message_ts, platform)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  const stmt = db.prepare<MovieRequest, [string, number, string | null, number, string | null, string, string | null, string, string | null]>(`
+    INSERT INTO requests (movie_title, tmdb_id, imdb_id, year, poster_url, requester_slack_id, slack_message_ts, platform, approval_channel_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING *
   `);
   const result = stmt.get(
@@ -143,7 +149,8 @@ export function createRequest(input: CreateRequestInput): MovieRequest {
     input.poster_url ?? null,
     input.requester_slack_id,
     input.slack_message_ts ?? null,
-    input.platform ?? 'slack'
+    input.platform ?? 'slack',
+    input.approval_channel_id ?? null
   );
   if (!result) throw new Error('Failed to create request');
   return result;
@@ -207,9 +214,9 @@ export function updateRequestStatus(input: UpdateRequestStatusInput): MovieReque
 
 export function createTvRequest(input: CreateTvRequestInput): TvRequest {
   const db = getDb();
-  const stmt = db.prepare<TvRequest, [string, number, number, string | null, string, string | null, string]>(`
-    INSERT INTO tv_requests (show_title, tvdb_id, year, poster_url, requester_slack_id, slack_message_ts, platform)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+  const stmt = db.prepare<TvRequest, [string, number, number, string | null, string, string | null, string, string | null]>(`
+    INSERT INTO tv_requests (show_title, tvdb_id, year, poster_url, requester_slack_id, slack_message_ts, platform, approval_channel_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING *
   `);
   const result = stmt.get(
@@ -219,7 +226,8 @@ export function createTvRequest(input: CreateTvRequestInput): TvRequest {
     input.poster_url ?? null,
     input.requester_slack_id,
     input.slack_message_ts ?? null,
-    input.platform ?? 'slack'
+    input.platform ?? 'slack',
+    input.approval_channel_id ?? null
   );
   if (!result) throw new Error('Failed to create TV request');
   return result;

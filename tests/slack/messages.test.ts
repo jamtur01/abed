@@ -113,6 +113,7 @@ describe('buildApprovalRequestMessage', () => {
     const blocks = buildApprovalRequestMessage(
       { title: 'The Batman', year: 2022, tmdbId: 12345, posterUrl: null },
       'U_REQUESTER',
+      42,
     );
     const firstBlock = blocks[0] as any;
     expect(firstBlock.text.text).toContain('The Batman');
@@ -124,6 +125,7 @@ describe('buildApprovalRequestMessage', () => {
     const blocks = buildApprovalRequestMessage(
       { title: 'The Batman', year: 2022, tmdbId: 12345, posterUrl: null },
       'U_REQUESTER',
+      42,
     );
     const actionsBlock = blocks.find((b) => b.type === 'actions') as any;
     expect(actionsBlock).toBeDefined();
@@ -135,6 +137,7 @@ describe('buildApprovalRequestMessage', () => {
     const blocks = buildApprovalRequestMessage(
       { title: 'The Batman', year: 2022, tmdbId: 12345, posterUrl: null },
       'U_REQUESTER',
+      42,
     );
     const actionsBlock = blocks.find((b) => b.type === 'actions') as any;
     expect(actionsBlock.elements[0].style).toBe('primary');
@@ -290,6 +293,7 @@ describe('buildTvApprovalRequestMessage', () => {
     const blocks = buildTvApprovalRequestMessage(
       { title: 'Breaking Bad', year: 2008, tvdbId: 81189, posterUrl: null, seasonCount: 5 },
       'U_REQUESTER',
+      42,
     );
     const firstBlock = blocks[0] as any;
     expect(firstBlock.text.text).toContain('Breaking Bad');
@@ -301,6 +305,7 @@ describe('buildTvApprovalRequestMessage', () => {
     const blocks = buildTvApprovalRequestMessage(
       { title: 'Breaking Bad', year: 2008, tvdbId: 81189, posterUrl: null, network: 'AMC', seasonCount: 5 },
       'U_REQUESTER',
+      42,
     );
     const firstBlock = blocks[0] as any;
     expect(firstBlock.text.text).toContain('Network: AMC');
@@ -311,6 +316,7 @@ describe('buildTvApprovalRequestMessage', () => {
     const blocks = buildTvApprovalRequestMessage(
       { title: 'Breaking Bad', year: 2008, tvdbId: 81189, posterUrl: null, seasonCount: 5 },
       'U_REQUESTER',
+      42,
     );
     const actionsBlock = blocks.find((b) => b.type === 'actions') as any;
     expect(actionsBlock).toBeDefined();

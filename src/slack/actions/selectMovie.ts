@@ -33,7 +33,7 @@ export function registerSelectMovieAction(app: App, deps: SelectMovieDeps): void
         return;
       }
 
-      const movie = cachedResults.find(m => m.tmdbId === tmdbId);
+      const movie = cachedResults.find((m) => m.tmdbId === tmdbId);
       if (!movie) {
         await respond({
           response_type: 'ephemeral',
@@ -74,11 +74,17 @@ export function registerSelectMovieAction(app: App, deps: SelectMovieDeps): void
         text: `:white_check_mark: Your request for *${movie.title} (${movie.year})* has been submitted for approval!`,
       });
     } catch (error) {
-      log.error('Error in selectMovie action', { user: userId, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in selectMovie action', {
+        user: userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,
-        text: ':x: Something went wrong. Please try again.',
+        text:
+          error instanceof SubmissionDenied
+            ? error.message
+            : ':x: Something went wrong. Check /queue before retrying.',
       });
     }
   });

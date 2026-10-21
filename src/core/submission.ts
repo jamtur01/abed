@@ -1,24 +1,24 @@
-import { createRequest, createTvRequest, getDb } from "../db/index";
-import type { CreateRequestInput, CreateTvRequestInput, Platform } from "../db/types";
+import { createRequest, createTvRequest, getDb } from '../db/index';
+import type { CreateRequestInput, CreateTvRequestInput, Platform } from '../db/types';
 
 export class SubmissionDenied extends Error {}
 
 /** Check before API work, then repeat under the write lock when reserving the row. */
 export function assertCanSubmit(
-  kind: "movie" | "tv",
+  kind: 'movie' | 'tv',
   platform: Platform,
   user: string,
   mediaId: number,
 ): void {
-  const table = kind === "movie" ? "requests" : "tv_requests";
-  const column = kind === "movie" ? "tmdb_id" : "tvdb_id";
+  const table = kind === 'movie' ? 'requests' : 'tv_requests';
+  const column = kind === 'movie' ? 'tmdb_id' : 'tvdb_id';
   if (
     getDb()
       .query(`SELECT id FROM ${table} WHERE platform=? AND ${column}=?
     AND status IN ('pending','submitting','uncertain') LIMIT 1`)
       .get(platform, mediaId)
   ) {
-    throw new SubmissionDenied("This title already has an active request. Check /queue.");
+    throw new SubmissionDenied('This title already has an active request. Check /queue.');
   }
   const count =
     getDb()
@@ -27,13 +27,13 @@ export function assertCanSubmit(
     SELECT requester_slack_id, platform, created_at FROM tv_requests
   ) WHERE platform=? AND requester_slack_id=? AND created_at >= datetime('now','-1 hour')`)
       .get(platform, user)?.total ?? 0;
-  if (count >= 10) throw new SubmissionDenied("Request limit reached: 10 titles per hour.");
+  if (count >= 10) throw new SubmissionDenied('Request limit reached: 10 titles per hour.');
 }
 
 export function reserveMovieRequest(input: CreateRequestInput) {
   return getDb()
     .transaction(() => {
-      assertCanSubmit("movie", input.platform ?? "slack", input.requester_slack_id, input.tmdb_id);
+      assertCanSubmit('movie', input.platform ?? 'slack', input.requester_slack_id, input.tmdb_id);
       return createRequest(input);
     })
     .immediate();
@@ -42,7 +42,7 @@ export function reserveMovieRequest(input: CreateRequestInput) {
 export function reserveTvRequest(input: CreateTvRequestInput) {
   return getDb()
     .transaction(() => {
-      assertCanSubmit("tv", input.platform ?? "slack", input.requester_slack_id, input.tvdb_id);
+      assertCanSubmit('tv', input.platform ?? 'slack', input.requester_slack_id, input.tvdb_id);
       return createTvRequest(input);
     })
     .immediate();
@@ -52,7 +52,7 @@ export function reserveTvRequest(input: CreateTvRequestInput) {
 export function consumeRequestBudget(platform: Platform, user: string): boolean {
   const minute = Math.floor(Date.now() / 60_000);
   const db = getDb();
-  db.query("DELETE FROM request_rate_limits WHERE minute < ?").run(minute);
+  db.query('DELETE FROM request_rate_limits WHERE minute < ?').run(minute);
   return (
     db
       .query(`INSERT INTO request_rate_limits(platform,user_id,minute,count)
@@ -60,4 +60,29 @@ export function consumeRequestBudget(platform: Platform, user: string): boolean 
     WHERE count < 20 RETURNING count`)
       .get(platform, user, minute) !== null
   );
+}
+
+/** Failed or interrupted message posts leave an invalid button, never a retryable old request. */
+export async function postApproval(
+  kind: 'movie' | 'tv',
+  id: number,
+  send: () => Promise<string>,
+): Promise<string> {
+  const table = kind === 'movie' ? 'requests' : 'tv_requests';
+  try {
+    const message = await send();
+    if (!message) throw new Error('Approval post returned no message ID');
+    const result = getDb()
+      .query(`UPDATE ${table} SET slack_message_ts=?
+      WHERE id=? AND status='pending' AND slack_message_ts IS NULL`)
+      .run(message, id);
+    if (result.changes !== 1) throw new Error('Approval message no longer owns its request');
+    return message;
+  } catch (error) {
+    getDb()
+      .query(`UPDATE ${table} SET status='failed', updated_at=datetime('now')
+      WHERE id=? AND status='pending' AND slack_message_ts IS NULL`)
+      .run(id);
+    throw error;
+  }
 }

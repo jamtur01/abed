@@ -1,10 +1,17 @@
-import { reserveMovieRequest, reserveTvRequest, assertCanSubmit } from '../submission';
+import {
+  reserveMovieRequest,
+  reserveTvRequest,
+  assertCanSubmit,
+  postApproval,
+} from '../submission';
 import type { RadarrSearchResult } from '../../radarr/types';
 import type { RadarrClient } from '../../radarr/client';
 import type { SonarrSearchResult } from '../../sonarr/types';
 import type { SonarrClient } from '../../sonarr/client';
-import { updateRequestStatus, updateTvRequestStatus } from '../../db/index';
-import { buildApprovalRequestMessage, buildTvApprovalRequestMessage } from '../../slack/messages/index';
+import {
+  buildApprovalRequestMessage,
+  buildTvApprovalRequestMessage,
+} from '../../slack/messages/index';
 import { getMoviePosterUrl, getTvPosterUrl } from './posterUrl';
 import { createLogger } from '../../logger';
 
@@ -27,13 +34,19 @@ type SubmitForApprovalResult = {
   error?: string;
 };
 
-export async function submitMovieForApproval(params: SubmitForApprovalParams): Promise<SubmitForApprovalResult> {
+export async function submitMovieForApproval(
+  params: SubmitForApprovalParams,
+): Promise<SubmitForApprovalResult> {
   const { movie, userId, client, radarrClient, approvalChannelId } = params;
 
   assertCanSubmit('movie', 'slack', userId, movie.tmdbId);
   const exists = await radarrClient.movieExists(movie.tmdbId);
   if (exists) {
-    log.info('Already in Radarr', { user: userId, movie: `${movie.title} (${movie.year})`, tmdbId: movie.tmdbId });
+    log.info('Already in Radarr', {
+      user: userId,
+      movie: `${movie.title} (${movie.year})`,
+      tmdbId: movie.tmdbId,
+    });
     return { success: false, alreadyExists: true };
   }
 
@@ -64,27 +77,33 @@ export async function submitMovieForApproval(params: SubmitForApprovalParams): P
       text: `Movie request: ${movie.title} (${movie.year})`,
     });
 
-  let result;
-  try {
-    result = await postApprovalMessage();
-  } catch (postError: any) {
-    if (postError?.data?.error === 'not_in_channel') {
-      log.warn('Auto-joining approval channel', { channel: approvalChannelId });
-      await client.conversations.join({ channel: approvalChannelId });
+  await postApproval('movie', request.id, async () => {
+    let result;
+    try {
       result = await postApprovalMessage();
-    } else {
-      log.error('Error submitting for approval', { user: userId, tmdbId: movie.tmdbId, error: postError instanceof Error ? postError.message : String(postError) });
-      throw postError;
+    } catch (postError: any) {
+      if (postError?.data?.error === 'not_in_channel') {
+        log.warn('Auto-joining approval channel', { channel: approvalChannelId });
+        await client.conversations.join({ channel: approvalChannelId });
+        result = await postApprovalMessage();
+      } else {
+        log.error('Error submitting for approval', {
+          user: userId,
+          tmdbId: movie.tmdbId,
+          error: postError instanceof Error ? postError.message : String(postError),
+        });
+        throw postError;
+      }
     }
-  }
 
-  updateRequestStatus({
-    id: request.id,
-    status: 'pending',
-    slack_message_ts: result.ts as string,
+    return result.ts as string;
   });
 
-  log.info('Approval posted', { movie: `${movie.title} (${movie.year})`, tmdbId: movie.tmdbId, requestId: request.id });
+  log.info('Approval posted', {
+    movie: `${movie.title} (${movie.year})`,
+    tmdbId: movie.tmdbId,
+    requestId: request.id,
+  });
 
   return { success: true };
 }
@@ -100,13 +119,19 @@ type SubmitTvForApprovalParams = {
   approvalChannelId: string;
 };
 
-export async function submitTvForApproval(params: SubmitTvForApprovalParams): Promise<SubmitForApprovalResult> {
+export async function submitTvForApproval(
+  params: SubmitTvForApprovalParams,
+): Promise<SubmitForApprovalResult> {
   const { show, userId, client, sonarrClient, approvalChannelId } = params;
 
   assertCanSubmit('tv', 'slack', userId, show.tvdbId);
   const exists = await sonarrClient.seriesExists(show.tvdbId);
   if (exists) {
-    log.info('Already in Sonarr', { user: userId, show: `${show.title} (${show.year})`, tvdbId: show.tvdbId });
+    log.info('Already in Sonarr', {
+      user: userId,
+      show: `${show.title} (${show.year})`,
+      tvdbId: show.tvdbId,
+    });
     return { success: false, alreadyExists: true };
   }
 
@@ -121,7 +146,7 @@ export async function submitTvForApproval(params: SubmitTvForApprovalParams): Pr
     approval_channel_id: approvalChannelId,
   });
 
-  const seasonCount = show.seasons.filter(s => s.seasonNumber > 0).length;
+  const seasonCount = show.seasons.filter((s) => s.seasonNumber > 0).length;
 
   const postApprovalMessage = () =>
     client.chat.postMessage({
@@ -142,27 +167,33 @@ export async function submitTvForApproval(params: SubmitTvForApprovalParams): Pr
       text: `TV show request: ${show.title} (${show.year})`,
     });
 
-  let result;
-  try {
-    result = await postApprovalMessage();
-  } catch (postError: any) {
-    if (postError?.data?.error === 'not_in_channel') {
-      log.warn('Auto-joining approval channel', { channel: approvalChannelId });
-      await client.conversations.join({ channel: approvalChannelId });
+  await postApproval('tv', request.id, async () => {
+    let result;
+    try {
       result = await postApprovalMessage();
-    } else {
-      log.error('Error submitting for approval', { user: userId, tvdbId: show.tvdbId, error: postError instanceof Error ? postError.message : String(postError) });
-      throw postError;
+    } catch (postError: any) {
+      if (postError?.data?.error === 'not_in_channel') {
+        log.warn('Auto-joining approval channel', { channel: approvalChannelId });
+        await client.conversations.join({ channel: approvalChannelId });
+        result = await postApprovalMessage();
+      } else {
+        log.error('Error submitting for approval', {
+          user: userId,
+          tvdbId: show.tvdbId,
+          error: postError instanceof Error ? postError.message : String(postError),
+        });
+        throw postError;
+      }
     }
-  }
 
-  updateTvRequestStatus({
-    id: request.id,
-    status: 'pending',
-    slack_message_ts: result.ts as string,
+    return result.ts as string;
   });
 
-  log.info('Approval posted', { show: `${show.title} (${show.year})`, tvdbId: show.tvdbId, requestId: request.id });
+  log.info('Approval posted', {
+    show: `${show.title} (${show.year})`,
+    tvdbId: show.tvdbId,
+    requestId: request.id,
+  });
 
   return { success: true };
 }

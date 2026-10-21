@@ -22,6 +22,8 @@ export function getDb(path?: string): Database {
     // A stopped process cannot know whether an in-flight Arr write was accepted.
     for (const table of ['requests', 'tv_requests']) {
       _db.exec(`UPDATE ${table} SET status='uncertain' WHERE status='submitting'`);
+      _db.exec(`UPDATE ${table} SET status='failed' WHERE status='pending'
+        AND (slack_message_ts IS NULL OR approval_channel_id IS NULL)`);
     }
   }
   return _db;
@@ -85,7 +87,7 @@ function initSchema(db: Database): void {
   migratePlatform(db);
   for (const table of ['requests', 'tv_requests']) {
     const columns = db.query<{ name: string }, []>(`PRAGMA table_info('${table}')`).all();
-    if (!columns.some(c => c.name === 'approval_channel_id')) {
+    if (!columns.some((c) => c.name === 'approval_channel_id')) {
       db.exec(`ALTER TABLE ${table} ADD COLUMN approval_channel_id TEXT`);
     }
   }
@@ -107,13 +109,13 @@ function migratePlatform(db: Database): void {
 
 function migrateDownloadedNotified(db: Database): void {
   const columns = db.prepare<{ name: string }, []>(`PRAGMA table_info('requests')`).all();
-  const hasColumn = columns.some(c => c.name === 'downloaded_notified');
+  const hasColumn = columns.some((c) => c.name === 'downloaded_notified');
   if (!hasColumn) {
     db.exec(`ALTER TABLE requests ADD COLUMN downloaded_notified INTEGER NOT NULL DEFAULT 0`);
   }
 
   const tvColumns = db.prepare<{ name: string }, []>(`PRAGMA table_info('tv_requests')`).all();
-  const tvHasColumn = tvColumns.some(c => c.name === 'downloaded_notified');
+  const tvHasColumn = tvColumns.some((c) => c.name === 'downloaded_notified');
   if (!tvHasColumn) {
     db.exec(`ALTER TABLE tv_requests ADD COLUMN downloaded_notified INTEGER NOT NULL DEFAULT 0`);
   }
@@ -121,31 +123,52 @@ function migrateDownloadedNotified(db: Database): void {
 
 export function getApprovedUnnotifiedRequests(): MovieRequest[] {
   const db = getDb();
-  return db.prepare<MovieRequest, []>(
-    `SELECT * FROM requests WHERE status = 'approved' AND downloaded_notified = 0`,
-  ).all();
+  return db
+    .prepare<MovieRequest, []>(
+      `SELECT * FROM requests WHERE status = 'approved' AND downloaded_notified = 0`,
+    )
+    .all();
 }
 
 export function getApprovedUnnotifiedTvRequests(): TvRequest[] {
   const db = getDb();
-  return db.prepare<TvRequest, []>(
-    `SELECT * FROM tv_requests WHERE status = 'approved' AND downloaded_notified = 0`,
-  ).all();
+  return db
+    .prepare<TvRequest, []>(
+      `SELECT * FROM tv_requests WHERE status = 'approved' AND downloaded_notified = 0`,
+    )
+    .all();
 }
 
 export function markDownloadNotified(id: number): void {
   const db = getDb();
-  db.prepare(`UPDATE requests SET downloaded_notified = 1, updated_at = datetime('now') WHERE id = ?`).run(id);
+  db.prepare(
+    `UPDATE requests SET downloaded_notified = 1, updated_at = datetime('now') WHERE id = ?`,
+  ).run(id);
 }
 
 export function markTvDownloadNotified(id: number): void {
   const db = getDb();
-  db.prepare(`UPDATE tv_requests SET downloaded_notified = 1, updated_at = datetime('now') WHERE id = ?`).run(id);
+  db.prepare(
+    `UPDATE tv_requests SET downloaded_notified = 1, updated_at = datetime('now') WHERE id = ?`,
+  ).run(id);
 }
 
 export function createRequest(input: CreateRequestInput): MovieRequest {
   const db = getDb();
-  const stmt = db.prepare<MovieRequest, [string, number, string | null, number, string | null, string, string | null, string, string | null]>(`
+  const stmt = db.prepare<
+    MovieRequest,
+    [
+      string,
+      number,
+      string | null,
+      number,
+      string | null,
+      string,
+      string | null,
+      string,
+      string | null,
+    ]
+  >(`
     INSERT INTO requests (movie_title, tmdb_id, imdb_id, year, poster_url, requester_slack_id, slack_message_ts, platform, approval_channel_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING *
@@ -159,7 +182,7 @@ export function createRequest(input: CreateRequestInput): MovieRequest {
     input.requester_slack_id,
     input.slack_message_ts ?? null,
     input.platform ?? 'slack',
-    input.approval_channel_id ?? null
+    input.approval_channel_id ?? null,
   );
   if (!result) throw new Error('Failed to create request');
   return result;
@@ -181,22 +204,39 @@ export function getRequestByTmdbId(tmdbId: number): MovieRequest | null {
   );
 }
 
-export function getRequestsByUserId(userId: string, status?: RequestStatus, platform: Platform = 'slack'): MovieRequest[] {
+export function getRequestsByUserId(
+  userId: string,
+  status?: RequestStatus,
+  platform: Platform = 'slack',
+): MovieRequest[] {
   const filters = ['platform = ? AND requester_slack_id = ?'];
   const values: string[] = [platform, userId];
-  if (status) { filters.push('status = ?'); values.push(status); }
-  return getDb().query<MovieRequest, string[]>(
-    `SELECT * FROM requests WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT 15`,
-  ).all(...values);
+  if (status) {
+    filters.push('status = ?');
+    values.push(status);
+  }
+  return getDb()
+    .query<MovieRequest, string[]>(
+      `SELECT * FROM requests WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT 15`,
+    )
+    .all(...values);
 }
 
-export function getAllRequests(status?: RequestStatus, platform: Platform = 'slack'): MovieRequest[] {
+export function getAllRequests(
+  status?: RequestStatus,
+  platform: Platform = 'slack',
+): MovieRequest[] {
   const filters = ['platform = ?'];
   const values: string[] = [platform];
-  if (status) { filters.push('status = ?'); values.push(status); }
-  return getDb().query<MovieRequest, string[]>(
-    `SELECT * FROM requests WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT 25`,
-  ).all(...values);
+  if (status) {
+    filters.push('status = ?');
+    values.push(status);
+  }
+  return getDb()
+    .query<MovieRequest, string[]>(
+      `SELECT * FROM requests WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT 25`,
+    )
+    .all(...values);
 }
 
 export function updateRequestStatus(input: UpdateRequestStatusInput): MovieRequest {
@@ -223,7 +263,10 @@ export function updateRequestStatus(input: UpdateRequestStatusInput): MovieReque
 
 export function createTvRequest(input: CreateTvRequestInput): TvRequest {
   const db = getDb();
-  const stmt = db.prepare<TvRequest, [string, number, number, string | null, string, string | null, string, string | null]>(`
+  const stmt = db.prepare<
+    TvRequest,
+    [string, number, number, string | null, string, string | null, string, string | null]
+  >(`
     INSERT INTO tv_requests (show_title, tvdb_id, year, poster_url, requester_slack_id, slack_message_ts, platform, approval_channel_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING *
@@ -236,7 +279,7 @@ export function createTvRequest(input: CreateTvRequestInput): TvRequest {
     input.requester_slack_id,
     input.slack_message_ts ?? null,
     input.platform ?? 'slack',
-    input.approval_channel_id ?? null
+    input.approval_channel_id ?? null,
   );
   if (!result) throw new Error('Failed to create TV request');
   return result;
@@ -258,22 +301,39 @@ export function getTvRequestByTvdbId(tvdbId: number): TvRequest | null {
   );
 }
 
-export function getTvRequestsByUserId(userId: string, status?: RequestStatus, platform: Platform = 'slack'): TvRequest[] {
+export function getTvRequestsByUserId(
+  userId: string,
+  status?: RequestStatus,
+  platform: Platform = 'slack',
+): TvRequest[] {
   const filters = ['platform = ? AND requester_slack_id = ?'];
   const values: string[] = [platform, userId];
-  if (status) { filters.push('status = ?'); values.push(status); }
-  return getDb().query<TvRequest, string[]>(
-    `SELECT * FROM tv_requests WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT 15`,
-  ).all(...values);
+  if (status) {
+    filters.push('status = ?');
+    values.push(status);
+  }
+  return getDb()
+    .query<TvRequest, string[]>(
+      `SELECT * FROM tv_requests WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT 15`,
+    )
+    .all(...values);
 }
 
-export function getAllTvRequests(status?: RequestStatus, platform: Platform = 'slack'): TvRequest[] {
+export function getAllTvRequests(
+  status?: RequestStatus,
+  platform: Platform = 'slack',
+): TvRequest[] {
   const filters = ['platform = ?'];
   const values: string[] = [platform];
-  if (status) { filters.push('status = ?'); values.push(status); }
-  return getDb().query<TvRequest, string[]>(
-    `SELECT * FROM tv_requests WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT 25`,
-  ).all(...values);
+  if (status) {
+    filters.push('status = ?');
+    values.push(status);
+  }
+  return getDb()
+    .query<TvRequest, string[]>(
+      `SELECT * FROM tv_requests WHERE ${filters.join(' AND ')} ORDER BY created_at DESC LIMIT 25`,
+    )
+    .all(...values);
 }
 
 export function updateTvRequestStatus(input: UpdateTvRequestStatusInput): TvRequest {

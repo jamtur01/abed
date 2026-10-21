@@ -1,11 +1,21 @@
-import { reserveMovieRequest, reserveTvRequest, assertCanSubmit, SubmissionDenied } from '../../core/submission';
+import {
+  reserveMovieRequest,
+  reserveTvRequest,
+  assertCanSubmit,
+  SubmissionDenied,
+  postApproval,
+} from '../../core/submission';
 import { MessageFlags, TextChannel } from 'discord.js';
 import type { ButtonInteraction } from 'discord.js';
 import type { RadarrClient } from '../../radarr/client';
 import type { SonarrClient } from '../../sonarr/client';
 import { getResults, clearResults, getTvResults, clearTvResults } from '../../core/searchCache';
-import { updateRequestStatus, updateTvRequestStatus } from '../../db/index';
-import { buildMovieCarouselPage, buildTvCarouselPage, buildApprovalRequestEmbed, buildTvApprovalRequestEmbed } from '../messages/index';
+import {
+  buildMovieCarouselPage,
+  buildTvCarouselPage,
+  buildApprovalRequestEmbed,
+  buildTvApprovalRequestEmbed,
+} from '../messages/index';
 import { getMoviePosterUrl, getTvPosterUrl } from '../../core/helpers/posterUrl';
 import { createLogger } from '../../logger';
 
@@ -81,7 +91,7 @@ export async function handleTvCarouselNav(interaction: ButtonInteraction): Promi
 
 export async function handleMovieCarouselRequest(
   interaction: ButtonInteraction,
-  deps: { radarrClient: RadarrClient; approvalChannelId: string }
+  deps: { radarrClient: RadarrClient; approvalChannelId: string },
 ): Promise<void> {
   const parts = interaction.customId.split('_');
   const index = parseInt(parts[2] ?? '0', 10);
@@ -132,7 +142,9 @@ export async function handleMovieCarouselRequest(
       return;
     }
 
-    const approvalChannel = await interaction.client.channels.fetch(deps.approvalChannelId) as TextChannel;
+    const approvalChannel = (await interaction.client.channels.fetch(
+      deps.approvalChannelId,
+    )) as TextChannel;
     if (!approvalChannel) {
       throw new Error('Approval channel not found or bot lacks access');
     }
@@ -149,10 +161,17 @@ export async function handleMovieCarouselRequest(
     });
 
     const approvalMsg = buildApprovalRequestEmbed(movie, userId, request.id);
-    const sentMsg = await approvalChannel.send({ ...approvalMsg });
-    updateRequestStatus({ id: request.id, status: 'pending', slack_message_ts: sentMsg.id });
+    const messageId = await postApproval(
+      'movie',
+      request.id,
+      async () => (await approvalChannel.send({ ...approvalMsg })).id,
+    );
 
-    log.info('Movie carousel approval request posted', { user: userId, tmdbId: movie.tmdbId, messageId: sentMsg.id });
+    log.info('Movie carousel approval request posted', {
+      user: userId,
+      tmdbId: movie.tmdbId,
+      messageId,
+    });
 
     clearResults(`discord_${userId}`);
 
@@ -161,9 +180,15 @@ export async function handleMovieCarouselRequest(
       flags: MessageFlags.Ephemeral,
     });
   } catch (error) {
-    log.error('Failed to process movie carousel request', { user: userId, error: error instanceof Error ? error.message : String(error) });
+    log.error('Failed to process movie carousel request', {
+      user: userId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     await interaction.followUp({
-      content: error instanceof SubmissionDenied ? error.message : '❌ Something went wrong. Check /queue before retrying.',
+      content:
+        error instanceof SubmissionDenied
+          ? error.message
+          : '❌ Something went wrong. Check /queue before retrying.',
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -171,7 +196,7 @@ export async function handleMovieCarouselRequest(
 
 export async function handleTvCarouselRequest(
   interaction: ButtonInteraction,
-  deps: { sonarrClient?: SonarrClient | null; approvalChannelId: string }
+  deps: { sonarrClient?: SonarrClient | null; approvalChannelId: string },
 ): Promise<void> {
   if (!deps.sonarrClient) {
     await interaction.deferUpdate();
@@ -226,7 +251,9 @@ export async function handleTvCarouselRequest(
       return;
     }
 
-    const approvalChannel = await interaction.client.channels.fetch(deps.approvalChannelId) as TextChannel;
+    const approvalChannel = (await interaction.client.channels.fetch(
+      deps.approvalChannelId,
+    )) as TextChannel;
     if (!approvalChannel) {
       throw new Error('Approval channel not found or bot lacks access');
     }
@@ -242,10 +269,17 @@ export async function handleTvCarouselRequest(
     });
 
     const approvalMsg = buildTvApprovalRequestEmbed(show, userId, request.id);
-    const sentMsg = await approvalChannel.send({ ...approvalMsg });
-    updateTvRequestStatus({ id: request.id, status: 'pending', slack_message_ts: sentMsg.id });
+    const messageId = await postApproval(
+      'tv',
+      request.id,
+      async () => (await approvalChannel.send({ ...approvalMsg })).id,
+    );
 
-    log.info('TV carousel approval request posted', { user: userId, tvdbId: show.tvdbId, messageId: sentMsg.id });
+    log.info('TV carousel approval request posted', {
+      user: userId,
+      tvdbId: show.tvdbId,
+      messageId,
+    });
 
     clearTvResults(`discord_${userId}`);
 
@@ -254,9 +288,15 @@ export async function handleTvCarouselRequest(
       flags: MessageFlags.Ephemeral,
     });
   } catch (error) {
-    log.error('Failed to process TV carousel request', { user: userId, error: error instanceof Error ? error.message : String(error) });
+    log.error('Failed to process TV carousel request', {
+      user: userId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     await interaction.followUp({
-      content: error instanceof SubmissionDenied ? error.message : '❌ Something went wrong. Check /queue before retrying.',
+      content:
+        error instanceof SubmissionDenied
+          ? error.message
+          : '❌ Something went wrong. Check /queue before retrying.',
       flags: MessageFlags.Ephemeral,
     });
   }

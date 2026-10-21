@@ -33,7 +33,7 @@ export function registerSelectTvAction(app: App, deps: SelectTvDeps): void {
         return;
       }
 
-      const show = cachedResults.find(s => s.tvdbId === tvdbId);
+      const show = cachedResults.find((s) => s.tvdbId === tvdbId);
       if (!show) {
         await respond({
           response_type: 'ephemeral',
@@ -74,11 +74,17 @@ export function registerSelectTvAction(app: App, deps: SelectTvDeps): void {
         text: `:white_check_mark: Your request for *${show.title} (${show.year})* has been submitted for approval!`,
       });
     } catch (error) {
-      log.error('Error in selectTv action', { user: userId, error: error instanceof Error ? error.message : String(error) });
+      log.error('Error in selectTv action', {
+        user: userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       await respond({
         response_type: 'ephemeral',
         replace_original: false,
-        text: ':x: Something went wrong. Please try again.',
+        text:
+          error instanceof SubmissionDenied
+            ? error.message
+            : ':x: Something went wrong. Check /queue before retrying.',
       });
     }
   });

@@ -74,7 +74,7 @@ export function registerSelectMovieAction(app: App, deps: SelectMovieDeps): void
         text: `:white_check_mark: Your request for *${movie.title} (${movie.year})* has been submitted for approval!`,
       });
     } catch (error) {
-      log.error('Error in selectMovie action', {
+      (error instanceof SubmissionDenied ? log.info : log.error)('Error in selectMovie action', {
         user: userId,
         error: error instanceof Error ? error.message : String(error),
       });

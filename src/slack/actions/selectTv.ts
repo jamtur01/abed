@@ -74,7 +74,7 @@ export function registerSelectTvAction(app: App, deps: SelectTvDeps): void {
         text: `:white_check_mark: Your request for *${show.title} (${show.year})* has been submitted for approval!`,
       });
     } catch (error) {
-      log.error('Error in selectTv action', {
+      (error instanceof SubmissionDenied ? log.info : log.error)('Error in selectTv action', {
         user: userId,
         error: error instanceof Error ? error.message : String(error),
       });

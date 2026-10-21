@@ -72,10 +72,13 @@ export function registerMovieCommand(app: App, deps: MovieCommandDeps): void {
           text: `:white_check_mark: Your request for *${movie.title} (${movie.year})* has been submitted for approval!`,
         });
       } catch (error) {
-        log.error('Error in /movie command (IMDB path)', {
-          user: command.user_id,
-          error: error instanceof Error ? error.message : String(error),
-        });
+        (error instanceof SubmissionDenied ? log.info : log.error)(
+          'Error in /movie command (IMDB path)',
+          {
+            user: command.user_id,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        );
         await respond({
           response_type: 'ephemeral',
           text:
@@ -114,7 +117,7 @@ export function registerMovieCommand(app: App, deps: MovieCommandDeps): void {
         text: `Search results for: ${query}`,
       });
     } catch (error) {
-      log.error('Error in /movie command', {
+      (error instanceof SubmissionDenied ? log.info : log.error)('Error in /movie command', {
         user: command.user_id,
         error: error instanceof Error ? error.message : String(error),
       });

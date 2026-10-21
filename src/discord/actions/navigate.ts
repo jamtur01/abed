@@ -180,10 +180,13 @@ export async function handleMovieCarouselRequest(
       flags: MessageFlags.Ephemeral,
     });
   } catch (error) {
-    log.error('Failed to process movie carousel request', {
-      user: userId,
-      error: error instanceof Error ? error.message : String(error),
-    });
+    (error instanceof SubmissionDenied ? log.info : log.error)(
+      'Failed to process movie carousel request',
+      {
+        user: userId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
     await interaction.followUp({
       content:
         error instanceof SubmissionDenied
@@ -288,10 +291,13 @@ export async function handleTvCarouselRequest(
       flags: MessageFlags.Ephemeral,
     });
   } catch (error) {
-    log.error('Failed to process TV carousel request', {
-      user: userId,
-      error: error instanceof Error ? error.message : String(error),
-    });
+    (error instanceof SubmissionDenied ? log.info : log.error)(
+      'Failed to process TV carousel request',
+      {
+        user: userId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
     await interaction.followUp({
       content:
         error instanceof SubmissionDenied

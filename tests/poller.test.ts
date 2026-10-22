@@ -488,6 +488,7 @@ describe('poller — lifecycle', () => {
   it('prevents duplicate starts', async () => {
     const slack = makeSlack();
     const radarr = makeRadarr(false);
+    const duplicate = makeRadarr(false);
 
     const deps = {
       slackClient: slack.client,
@@ -498,8 +499,8 @@ describe('poller — lifecycle', () => {
     };
 
     startPoller(deps);
-    startPoller(deps);
-    startPoller(deps);
+    startPoller({ ...deps, radarrClient: duplicate.client });
+    startPoller({ ...deps, radarrClient: duplicate.client });
 
     const req = createRequest({
       movie_title: 'The Batman',
@@ -512,7 +513,8 @@ describe('poller — lifecycle', () => {
 
     await wait(POLL_MS * 2);
 
-    expect(radarr.getMovieByTmdbId).toHaveBeenCalledTimes(1);
+    expect(radarr.getMovieByTmdbId).toHaveBeenCalled();
+    expect(duplicate.getMovieByTmdbId).not.toHaveBeenCalled();
   });
 
   it('stopPoller clears the timer and halts polling', async () => {

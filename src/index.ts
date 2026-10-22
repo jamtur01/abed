@@ -1,3 +1,4 @@
+import { startHealthServer } from './health';
 import { getConfig } from './config/index';
 import { RadarrClient } from './radarr/client';
 import { SonarrClient } from './sonarr/client';
@@ -78,11 +79,12 @@ async function main(): Promise<void> {
   getDb();
   log.info('✅ Database ready.');
 
-  let slackApp: ReturnType<typeof createSlackApp> | null = null;
+  let slackApp: ReturnType<typeof createSlackApp>['app'] | null = null;
+  let slackConnected: (() => boolean) | null = null;
   let discordApp: any = null; // Will type properly when initializing
 
   if (config.slack) {
-    slackApp = createSlackApp(
+    const slack = createSlackApp(
       {
         requestChannelId: config.slack.requestChannelId,
         botToken: config.slack.botToken,
@@ -96,6 +98,8 @@ async function main(): Promise<void> {
       radarrClient,
     );
 
+    slackApp = slack.app;
+    slackConnected = slack.isConnected;
     await slackApp.start();
     log.info('💬 Slack bot started successfully.');
   } else {
@@ -134,6 +138,11 @@ async function main(): Promise<void> {
     sonarrClient: sonarrConfig?.sonarrClient ?? null,
   });
 
+  const health = startHealthServer(() => {
+    getDb().query('SELECT 1').get();
+    return (slackConnected?.() ?? true) && (discordApp?.isReady() ?? true);
+  });
+
   log.info('⚡️ Movie Bot is running!');
   if (config.slack) {
     log.info(`   Slack Request channel: ${config.slack.requestChannelId}`);
@@ -149,6 +158,7 @@ async function main(): Promise<void> {
 
   const shutdown = async (signal: string): Promise<void> => {
     log.info(`\n${signal} received. Shutting down gracefully...`);
+    await health.stop();
     stopPoller();
     if (slackApp) await slackApp.stop();
     if (discordApp) await discordApp.destroy();

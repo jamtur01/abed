@@ -480,3 +480,12 @@ bun run typecheck
 | Bot doesn't respond to `/myrequests` | `/myrequests` slash command not created in Slack app | Go to **Slash Commands** in the Slack app settings and create the `/myrequests` command (see [Slack App Setup](#4-create-the-slash-commands)) |
 | Bot doesn't respond to `/queue` | `/queue` slash command not created in Slack app | Go to **Slash Commands** in the Slack app settings and create the `/queue` command (see [Slack App Setup](#4-create-the-slash-commands)) |
 | SQLite errors or data not persisting between restarts | Volume not mounted or `./data` directory not writable | Ensure the `./data:/app/data` volume binding is in `docker-compose.yml` and that `./data` exists and is writable on the host |
+
+## Container readiness
+
+The image checks `http://127.0.0.1:3000/healthz` every 30 seconds. This loopback-only
+endpoint returns 200 when SQLite responds and every configured chat connection is
+active; it returns 503 on disconnection or a database error. No credentials or request
+records are returned. Three failed probes mark the container unhealthy, with 120 seconds
+of startup grace. The probe sends no Slack messages or Arr requests, and does not restart
+the app. It does not prove command delivery, approval processing or Arr availability.

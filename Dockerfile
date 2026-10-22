@@ -29,8 +29,8 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD pgrep -f "bun run" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+  CMD bun -e 'fetch("http://127.0.0.1:3000/healthz", {signal: AbortSignal.timeout(5000), redirect: "error"}).then(r => process.exit(r.status === 200 ? 0 : 1)).catch(() => process.exit(1))'
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["bun", "run", "src/index.ts"]

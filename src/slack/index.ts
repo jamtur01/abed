@@ -1,5 +1,5 @@
 import { registerChannelBoundary } from './boundary';
-import { App } from '@slack/bolt';
+import { App, SocketModeReceiver } from '@slack/bolt';
 import type { RadarrClient } from '../radarr/client';
 import type { SonarrClient } from '../sonarr/client';
 import { registerMovieCommand } from './commands/movie';
@@ -29,11 +29,11 @@ export function createSlackApp(
     } | null;
   },
   radarrClient: RadarrClient,
-): App {
+): { app: App; isConnected: () => boolean } {
+  const receiver = new SocketModeReceiver({ appToken: config.appToken });
   const app = new App({
     token: config.botToken,
-    appToken: config.appToken,
-    socketMode: true,
+    receiver,
   });
 
   registerChannelBoundary(app, config);
@@ -84,5 +84,5 @@ export function createSlackApp(
   registerMyRequestsCommand(app);
   registerQueueCommand(app);
 
-  return app;
+  return { app, isConnected: () => receiver.client.websocket?.isActive() === true };
 }

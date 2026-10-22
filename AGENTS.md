@@ -170,7 +170,7 @@ docker compose logs -f abed       # Tail logs
 - **`DB_PATH` default**: `./data/requests.db` locally, overridden to `/app/data/requests.db` via docker-compose env.
 - **Migration pattern**: Schema uses `CREATE TABLE IF NOT EXISTS` for initial setup. Additive column changes use manual migration functions (`migrateDownloadedNotified`, `migratePlatform`) that check `PRAGMA table_info` before `ALTER TABLE`. Destructive schema changes require manual DB handling.
 - **PUID/PGID support**: `docker-entrypoint.sh` adjusts the `abed` user's UID/GID to match `PUID`/`PGID` env vars (defaults to 1001:1001). Handles conflicts with existing UIDs/GIDs on the system.
-- **Docker healthcheck**: `pgrep -f "bun run"` every 30s with 30s start period. Process-level check only — does not verify Radarr/Sonarr connectivity.
+- **Docker healthcheck**: loopback `/healthz` checks the event loop, SQLite query and configured Slack/Discord connection state every 30s, with 120s startup grace. Arr and full command delivery remain separate functional checks.
 - **Secret redaction**: `src/logger.ts` redacts configured secrets (API keys, tokens) from all log output. Secrets are set once at startup via `_setSecrets()`.
 - **Graceful shutdown**: SIGTERM/SIGINT triggers `stopPoller()` → `slackApp.stop()` → `discordApp.destroy()` → `process.exit(0)`.
 - **tsconfig strict**: `strict: true` + `noUncheckedIndexedAccess: true` + `verbatimModuleSyntax: true`. All imports must use explicit `type` keyword for type-only imports.

@@ -16,7 +16,7 @@ LABEL org.opencontainers.image.source="https://github.com/jamtur01/abed"
 LABEL org.opencontainers.image.description="Slack bot for movie/TV requests with Radarr/Sonarr approval workflow"
 LABEL org.opencontainers.image.licenses="MIT"
 
-RUN apk upgrade --no-cache zlib && apk add --no-cache su-exec && \
+RUN apk upgrade --no-cache zlib musl musl-utils && apk add --no-cache su-exec && \
     addgroup -g 1001 -S abed && \
     adduser -u 1001 -G abed -S -D -H -h /app abed && \
     mkdir -p /app/data && chown abed:abed /app/data
